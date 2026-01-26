@@ -760,8 +760,69 @@ export default function VideoSilenceRemover() {
           </Card>
         )}
 
-        {/* Video Preview */}
-        {videoFile && (
+        {/* Video Previews - Before/After Comparison */}
+        {videoFile && processedVideoUrl && (
+          <Card className="mb-6 bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-slate-100">Video Comparison</CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Compare original and processed videos
+                  </CardDescription>
+                </div>
+                <button
+                  onClick={() => setComparisonMode(!comparisonMode)}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg"
+                >
+                  {comparisonMode ? 'Stack View' : 'Side-by-Side'}
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className={`grid ${comparisonMode ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                {/* Original Video */}
+                <div>
+                  <div className="text-sm font-medium text-slate-300 mb-2">
+                    Original {videoMetadata && `(${Math.floor(videoMetadata.duration / 60)}:${String(Math.floor(videoMetadata.duration % 60)).padStart(2, '0')})`}
+                  </div>
+                  <video
+                    ref={videoPreviewRef}
+                    controls
+                    className="w-full rounded-lg bg-black"
+                    key={videoFile.name}
+                  >
+                    <source src={URL.createObjectURL(videoFile)} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+                
+                {/* Processed Video */}
+                <div>
+                  <div className="text-sm font-medium text-green-400 mb-2">
+                    Processed {processingStats && `(${Math.floor(processingStats.processedDuration / 60)}:${String(Math.floor(processingStats.processedDuration % 60)).padStart(2, '0')})`}
+                    {processingStats && ` - ${processingStats.reductionPercent}% shorter`}
+                  </div>
+                  <video
+                    ref={processedVideoRef}
+                    controls
+                    className="w-full rounded-lg bg-black"
+                    key="processed-video"
+                  >
+                    <source src={processedVideoUrl} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-slate-400 text-center">
+                {comparisonMode ? 'Side-by-side comparison mode (press C to toggle)' : 'Stacked view (press C for side-by-side)'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Original Video Preview (when no processed video yet) */}
+        {videoFile && !processedVideoUrl && (
           <Card className="mb-6 bg-slate-800/50 border-slate-700">
             <CardHeader>
               <CardTitle className="text-slate-100">Original Video Preview</CardTitle>
@@ -779,31 +840,6 @@ export default function VideoSilenceRemover() {
                 <source src={URL.createObjectURL(videoFile)} type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Processed Video Preview */}
-        {processedVideoUrl && (
-          <Card className="mb-6 bg-slate-800/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-slate-100">Processed Video Preview</CardTitle>
-              <CardDescription className="text-slate-400">
-                Your video after silence removal
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <video
-                controls
-                className="w-full rounded-lg bg-black"
-                key="processed-video"
-              >
-                <source src={processedVideoUrl} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-              <p className="mt-3 text-sm text-slate-400 text-center">
-                Click the download button above to save this video
-              </p>
             </CardContent>
           </Card>
         )}
