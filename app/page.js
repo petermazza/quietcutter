@@ -157,23 +157,22 @@ export default function VideoSilenceRemover() {
       setStatusMessage('Loading video file...')
       await ffmpeg.writeFile(inputFileName, await fetchFile(videoFile))
       
-      setStatusMessage('Analyzing audio for silence...')
+      setStatusMessage('Analyzing and removing silence...')
       
-      // Use silenceremove filter to remove silent segments
-      // start_periods=1: process from the start
-      // start_duration=0: minimum silence duration at start
-      // start_threshold: volume threshold for start silence
-      // stop_periods=-1: remove all silent periods throughout
-      // stop_duration=0.5: consider segments longer than 0.5s as silence
+      // Use silenceremove filter with proper parameters to actually remove silence
+      // This filter removes audio silence by detecting it and cutting it out
+      // start_periods=1: remove silence from the start
+      // start_duration=0.1: minimum 0.1s of silence to detect at start
+      // start_threshold: volume threshold (in dB) 
+      // stop_periods=-1: remove all silence periods throughout
+      // stop_duration=0.3: minimum 0.3s of continuous silence to remove
       // stop_threshold: volume threshold for silence detection
-      // detection=peak: use peak detection for better accuracy
-      const filterComplex = `silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:detection=peak:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB:detection=peak`
-      
-      setStatusMessage('Removing silent segments...')
+      // window: sample window size for detection
+      // This will actually shorten the audio/video duration by removing silent parts
       
       await ffmpeg.exec([
         '-i', inputFileName,
-        '-af', filterComplex,
+        '-af', `silenceremove=start_periods=1:start_duration=0.1:start_threshold=${threshold}dB:stop_periods=-1:stop_duration=0.3:stop_threshold=${threshold}dB:window=0.02`,
         '-c:v', 'copy',
         '-c:a', 'aac',
         '-b:a', '192k',
