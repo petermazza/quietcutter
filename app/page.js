@@ -412,19 +412,19 @@ export default function VideoSilenceRemover() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="container mx-auto px-4 py-4 md:py-8 max-w-5xl">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Video className="w-10 h-10 text-blue-500" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <div className="text-center mb-6 md:mb-8">
+          <div className="flex items-center justify-center gap-2 md:gap-3 mb-3 md:mb-4">
+            <Video className="w-8 h-8 md:w-10 md:h-10 text-blue-500" />
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               Video Silence Remover
             </h1>
           </div>
-          <p className="text-slate-400 text-lg">
+          <p className="text-slate-400 text-base md:text-lg px-4">
             Remove silent segments and actually shorten your videos
           </p>
-          <p className="text-slate-500 text-sm mt-2">
+          <p className="text-slate-500 text-xs md:text-sm mt-2 px-4">
             Server-side processing • Videos actually shortened • Fast & reliable • Silence detected and cut out
           </p>
         </div>
