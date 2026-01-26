@@ -103,11 +103,20 @@ export default function VideoSilenceRemover() {
   useEffect(() => {
     // Check if browser supports required features
     if (typeof window !== 'undefined') {
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      const hasSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined'
+      const isCrossOriginIsolated = crossOriginIsolated
+      
       // Check for SharedArrayBuffer support
-      if (!crossOriginIsolated) {
-        console.warn('SharedArrayBuffer not available - COEP/COOP headers may not be set correctly')
-        setStatusMessage('Browser may have limited support. Try Chrome/Edge for best experience.')
+      if (!isCrossOriginIsolated) {
+        console.warn('crossOriginIsolated not available - FFmpeg may have limited functionality')
+        if (isSafari) {
+          setStatusMessage('Safari detected. Loading FFmpeg... (Safari 15.2+ required)')
+        } else {
+          setStatusMessage('Browser compatibility: Limited. Chrome/Edge recommended.')
+        }
       }
+      
       loadFFmpeg()
     }
   }, [])
