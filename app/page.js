@@ -300,6 +300,20 @@ export default function VideoSilenceRemover() {
           // Toggle comparison mode
           if (processedVideoUrl) setComparisonMode(!comparisonMode)
           break
+        case 'h':
+          // Toggle history panel
+          setShowHistory(!showHistory)
+          setShowSavedSettings(false)
+          break
+        case 's':
+          // Toggle saved settings panel
+          setShowSavedSettings(!showSavedSettings)
+          setShowHistory(false)
+          break
+        case 'l':
+          // Apply last used settings
+          if (lastUsedSettings && !processing) applyLastUsedSettings()
+          break
         case '?':
           // Show keyboard help
           setShowKeyboardHelp(!showKeyboardHelp)
@@ -315,12 +329,18 @@ export default function VideoSilenceRemover() {
             applyPreset(presetKeys[presetIndex])
           }
           break
+        case 'escape':
+          // Close any open panels
+          setShowHistory(false)
+          setShowSavedSettings(false)
+          setShowKeyboardHelp(false)
+          break
       }
     }
     
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [videoFile, processing, loaded, processedVideoUrl, comparisonMode, showKeyboardHelp])
+  }, [videoFile, processing, loaded, processedVideoUrl, comparisonMode, showKeyboardHelp, showHistory, showSavedSettings, lastUsedSettings])
 
   // Handle file selection
   const handleFileChange = (file) => {
