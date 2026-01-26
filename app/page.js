@@ -159,18 +159,14 @@ export default function VideoSilenceRemover() {
       
       setStatusMessage('Analyzing and removing silence...')
       
-      // Use silenceremove filter with atempo to actually remove silence sections
-      // The silenceremove filter will speed through silent parts (effectively removing time)
-      // This makes silent sections very short/fast instead of completely cutting them
-      // Parameters:
-      // - start_periods=1: remove leading silence
-      // - start_duration=0.1: minimum 0.1s silence at start
-      // - start_threshold: dB threshold for silence detection
-      // - stop_periods=-1: process all silence throughout the video  
-      // - stop_duration=0.5: minimum 0.5s of continuous silence to speed through
-      // - stop_threshold: dB threshold for silence
-      // - leave_silence=0.1: leave 0.1s of the silence (for smoother transitions)
-      const audioFilter = `silenceremove=start_periods=1:start_duration=0.1:start_threshold=${threshold}dB:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB:leave_silence=0.1`
+      // Use silenceremove filter to remove silent segments
+      // start_periods=1: remove leading silence
+      // start_duration=0.1: minimum 0.1s silence at start to detect
+      // start_threshold: dB threshold for silence detection
+      // stop_periods=-1: process all silence throughout the video  
+      // stop_duration=0.5: minimum 0.5s of continuous silence to process
+      // stop_threshold: dB threshold for silence
+      const audioFilter = `silenceremove=start_periods=1:start_duration=0.1:start_threshold=${threshold}dB:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB`
       
       await ffmpeg.exec([
         '-i', inputFileName,
