@@ -231,7 +231,10 @@ export default function VideoSilenceRemover() {
             </h1>
           </div>
           <p className="text-slate-400 text-lg">
-            Remove silent segments from your videos using AI-powered audio analysis
+            Remove silent segments from your videos using FFmpeg audio processing
+          </p>
+          <p className="text-slate-500 text-sm mt-2">
+            The silenceremove filter speeds through silent parts, making them very brief (0.1s) instead of cutting completely
           </p>
         </div>
 
