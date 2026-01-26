@@ -192,6 +192,7 @@ export default function VideoSilenceRemover() {
       const formData = new FormData()
       formData.append('video', videoFile)
       formData.append('threshold', threshold.toString())
+      formData.append('minDuration', minSilenceDuration.toString())
       
       setProgress(10)
       setStatusMessage('Processing on server (this will actually shorten the video)...')
