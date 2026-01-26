@@ -84,17 +84,18 @@ export async function POST(request) {
       if (segments.length === 0) {
         await execAsync(`cp ${inputPath} ${outputPath}`);
       } else if (segments.length === 1) {
-        // Single segment - just trim
+        // Single segment - trim with re-encoding to avoid black frames
         const seg = segments[0];
-        await execAsync(`ffmpeg -i ${inputPath} -ss ${seg.start} -to ${seg.end} -c copy -y ${outputPath}`);
+        await execAsync(`ffmpeg -ss ${seg.start} -i ${inputPath} -to ${seg.end - seg.start} -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -y ${outputPath}`);
       } else {
-        // Multiple segments - cut and concat
+        // Multiple segments - cut and concat with proper timestamps
         const segmentFiles = [];
         
         for (let i = 0; i < segments.length; i++) {
           const seg = segments[i];
           const segPath = `/tmp/seg_${timestamp}_${i}.mp4`;
-          await execAsync(`ffmpeg -i ${inputPath} -ss ${seg.start} -to ${seg.end} -c copy -y ${segPath}`);
+          // Re-encode to avoid keyframe issues and black screens
+          await execAsync(`ffmpeg -ss ${seg.start} -i ${inputPath} -to ${seg.end - seg.start} -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -avoid_negative_ts make_zero -y ${segPath}`);
           segmentFiles.push(segPath);
         }
         
@@ -103,8 +104,8 @@ export async function POST(request) {
         const concatContent = segmentFiles.map(f => `file '${f}'`).join('\n');
         await writeFile(concatPath, concatContent);
         
-        // Concatenate
-        await execAsync(`ffmpeg -f concat -safe 0 -i ${concatPath} -c copy -y ${outputPath}`);
+        // Concatenate with proper timestamp handling
+        await execAsync(`ffmpeg -f concat -safe 0 -i ${concatPath} -c copy -fflags +genpts -y ${outputPath}`);
         
         // Cleanup segment files
         await Promise.all(segmentFiles.map(f => unlink(f).catch(() => {})));
