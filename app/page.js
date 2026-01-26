@@ -649,6 +649,41 @@ export default function VideoSilenceRemover() {
 
                 {processedVideoUrl && (
                   <div className="pt-4 space-y-3">
+                    {/* Processing Statistics */}
+                    {processingStats && (
+                      <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-4">
+                        <div className="text-sm font-semibold text-green-300 mb-3">Processing Results</div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          <div>
+                            <div className="text-xs text-slate-400">Time Saved</div>
+                            <div className="text-lg font-semibold text-green-400">{processingStats.removedDuration.toFixed(1)}s</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-slate-400">Reduction</div>
+                            <div className="text-lg font-semibold text-green-400">{processingStats.reductionPercent}%</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-slate-400">Processing Time</div>
+                            <div className="text-lg font-semibold text-blue-400">{processingStats.processingTime.toFixed(1)}s</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-slate-400">Original</div>
+                            <div className="text-sm font-semibold text-slate-300">{processingStats.originalDuration.toFixed(1)}s</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-slate-400">Processed</div>
+                            <div className="text-sm font-semibold text-slate-300">{processingStats.processedDuration.toFixed(1)}s</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-slate-400">File Size</div>
+                            <div className="text-sm font-semibold text-slate-300">
+                              {(processingStats.processedSize / (1024 * 1024)).toFixed(2)} MB
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <Button
                       onClick={downloadVideo}
                       className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
