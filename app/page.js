@@ -38,7 +38,20 @@ export default function VideoSilenceRemover() {
     setStatusMessage('Loading FFmpeg WebAssembly...')
     
     try {
-      // Using single-threaded core for better compatibility with COEP headers
+      // Detect browser and check for required features
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      const hasSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined'
+      const isCrossOriginIsolated = crossOriginIsolated
+      
+      if (!hasSharedArrayBuffer || !isCrossOriginIsolated) {
+        const message = isSafari 
+          ? 'Safari detected. Checking compatibility...'
+          : 'Browser may have limited support for FFmpeg.wasm'
+        setStatusMessage(message)
+        console.warn('SharedArrayBuffer:', hasSharedArrayBuffer, 'crossOriginIsolated:', isCrossOriginIsolated)
+      }
+      
+      // Use single-threaded core for better Safari compatibility
       const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd'
       
       ffmpeg.on('log', ({ message }) => {
