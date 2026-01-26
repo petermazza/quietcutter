@@ -305,14 +305,31 @@ export default function VideoSilenceRemover() {
 
   // Download processed video
   const downloadVideo = () => {
-    if (!processedVideoUrl) return
+    console.log('Download button clicked!')
+    console.log('processedVideoUrl:', processedVideoUrl)
+    console.log('videoFile:', videoFile)
     
-    const a = document.createElement('a')
-    a.href = processedVideoUrl
-    a.download = `processed_${videoFile?.name || 'video.mp4'}`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    if (!processedVideoUrl) {
+      console.error('No processed video URL available')
+      setStatusMessage('Error: No processed video available to download')
+      return
+    }
+    
+    try {
+      const a = document.createElement('a')
+      a.href = processedVideoUrl
+      a.download = `processed_${videoFile?.name || 'video.mp4'}`
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      console.log('Triggering download:', a.download)
+      a.click()
+      document.body.removeChild(a)
+      setStatusMessage('Download started!')
+      console.log('Download triggered successfully')
+    } catch (error) {
+      console.error('Download error:', error)
+      setStatusMessage(`Download failed: ${error.message}`)
+    }
   }
 
   return (
