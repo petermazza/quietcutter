@@ -499,6 +499,9 @@ export default function VideoSilenceRemover() {
                       <Download className="w-5 h-5 mr-2" />
                       Download Processed Video
                     </Button>
+                    <p className="text-xs text-slate-500 text-center mt-2">
+                      Click above to save the processed video to your device
+                    </p>
                   </div>
                 )}
               </div>
