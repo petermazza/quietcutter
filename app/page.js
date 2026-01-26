@@ -19,10 +19,29 @@ export default function VideoSilenceRemover() {
   const [loadingFFmpeg, setLoadingFFmpeg] = useState(false)
   const [statusMessage, setStatusMessage] = useState('Ready to process video')
   const [threshold, setThreshold] = useState(-30)
+  const [minSilenceDuration, setMinSilenceDuration] = useState(0.5)
+  const [activePreset, setActivePreset] = useState('custom')
   
   const ffmpegRef = useRef(null)
   const videoPreviewRef = useRef(null)
   const fileInputRef = useRef(null)
+  
+  // Preset configurations
+  const presets = {
+    podcast: { name: 'Podcast', threshold: -35, duration: 1.0, icon: '🎙️', description: 'Remove long pauses between speech' },
+    screenRecording: { name: 'Screen Recording', threshold: -40, duration: 0.3, icon: '🖥️', description: 'Remove short pauses in tutorials' },
+    lecture: { name: 'Lecture', threshold: -30, duration: 0.8, icon: '👨‍🏫', description: 'Balanced for educational content' },
+    interview: { name: 'Interview', threshold: -25, duration: 0.5, icon: '🎬', description: 'Keep natural conversation flow' },
+    custom: { name: 'Custom', threshold: -30, duration: 0.5, icon: '⚙️', description: 'Manual adjustment' }
+  }
+  
+  // Apply preset
+  const applyPreset = (presetName) => {
+    const preset = presets[presetName]
+    setThreshold(preset.threshold)
+    setMinSilenceDuration(preset.duration)
+    setActivePreset(presetName)
+  }
 
   // Load FFmpeg
   const loadFFmpeg = async () => {
