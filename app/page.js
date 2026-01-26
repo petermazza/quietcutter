@@ -261,10 +261,10 @@ export default function VideoSilenceRemover() {
             </h1>
           </div>
           <p className="text-slate-400 text-lg">
-            Automatically detect and remove silent segments to shorten your videos
+            Compress and reduce silent audio segments in your videos
           </p>
           <p className="text-slate-500 text-sm mt-2">
-            Uses FFmpeg silencedetect + select filters to actually cut out silence and reduce video duration
+            Fast browser-based processing • Video stays same length • Audio silence compressed • No server upload needed
           </p>
         </div>
 
