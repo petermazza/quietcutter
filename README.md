@@ -23,7 +23,7 @@ A robust, single-page **Client-Side Video Silence Remover** built with Next.js 1
 
 ## How to Access
 
-**Public URL**: [https://quietcutter.preview.emergentagent.com](https://quietcutter.preview.emergentagent.com)
+**Public URL**: [https://vidsilence.preview.emergentagent.com](https://vidsilence.preview.emergentagent.com)
 
 **Local Development**: [http://localhost:3000](http://localhost:3000)
 
