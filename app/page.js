@@ -154,36 +154,33 @@ export default function VideoSilenceRemover() {
       setProcessingStats(null)
       setStatusMessage(`Selected: ${file.name}`)
       
-      // Extract video metadata
-      const video = document.createElement('video')
-      video.preload = 'metadata'
-      
-      const handleMetadata = () => {
-        console.log('Video metadata loaded:', {
-          duration: video.duration,
-          width: video.videoWidth,
-          height: video.videoHeight
-        })
-        
-        setVideoMetadata({
-          duration: video.duration,
-          width: video.videoWidth,
-          height: video.videoHeight,
-          size: file.size,
-          name: file.name,
-          type: file.type
-        })
-        
-        URL.revokeObjectURL(video.src)
-        video.removeEventListener('loadedmetadata', handleMetadata)
-      }
-      
-      video.addEventListener('loadedmetadata', handleMetadata)
-      video.src = URL.createObjectURL(file)
+      // Set basic metadata immediately
+      setVideoMetadata({
+        duration: 0, // Will be updated when video loads
+        width: 0,
+        height: 0,
+        size: file.size,
+        name: file.name,
+        type: file.type
+      })
       
       // Create preview URL for video player
       if (videoPreviewRef.current) {
-        videoPreviewRef.current.src = URL.createObjectURL(file)
+        const url = URL.createObjectURL(file)
+        videoPreviewRef.current.src = url
+        
+        // Extract full metadata from preview video element
+        videoPreviewRef.current.onloadedmetadata = () => {
+          console.log('Preview video metadata loaded')
+          setVideoMetadata({
+            duration: videoPreviewRef.current.duration,
+            width: videoPreviewRef.current.videoWidth,
+            height: videoPreviewRef.current.videoHeight,
+            size: file.size,
+            name: file.name,
+            type: file.type
+          })
+        }
       }
     } else if (file) {
       setStatusMessage('Please select a valid video file')
