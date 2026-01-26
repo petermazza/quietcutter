@@ -610,12 +610,41 @@ export default function VideoSilenceRemover() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {/* Step-by-step progress */}
+                {processing && currentStep && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${currentStep === 'Uploading' ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`} />
+                      <span className={currentStep === 'Uploading' ? 'text-blue-400' : 'text-slate-500'}>Uploading</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${currentStep === 'Detecting Silence' ? 'bg-blue-500 animate-pulse' : currentStep === 'Uploading' ? 'bg-slate-600' : 'bg-green-500'}`} />
+                      <span className={currentStep === 'Detecting Silence' ? 'text-blue-400' : currentStep === 'Uploading' ? 'text-slate-500' : 'text-slate-500'}>Detecting</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${currentStep === 'Cutting Segments' ? 'bg-blue-500 animate-pulse' : ['Uploading', 'Detecting Silence'].includes(currentStep) ? 'bg-slate-600' : 'bg-green-500'}`} />
+                      <span className={currentStep === 'Cutting Segments' ? 'text-blue-400' : ['Uploading', 'Detecting Silence'].includes(currentStep) ? 'text-slate-500' : 'text-slate-500'}>Cutting</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${currentStep === 'Finalizing' ? 'bg-blue-500 animate-pulse' : currentStep === 'Complete' ? 'bg-green-500' : 'bg-slate-600'}`} />
+                      <span className={currentStep === 'Finalizing' ? 'text-blue-400' : currentStep === 'Complete' ? 'text-green-400' : 'text-slate-500'}>Finalizing</span>
+                    </div>
+                  </div>
+                )}
+                
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-slate-400">{statusMessage}</span>
                     <span className="text-sm font-medium text-slate-300">{progress}%</span>
                   </div>
                   <Progress value={progress} className="h-2" />
+                  
+                  {/* Time estimate */}
+                  {estimatedTimeRemaining && processing && (
+                    <div className="mt-2 text-xs text-slate-500">
+                      Estimated time remaining: ~{estimatedTimeRemaining}s
+                    </div>
+                  )}
                 </div>
 
                 {processedVideoUrl && (
