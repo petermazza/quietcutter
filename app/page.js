@@ -386,16 +386,48 @@ export default function VideoSilenceRemover() {
 
         {/* Video Preview */}
         {videoFile && (
-          <Card className="bg-slate-800/50 border-slate-700">
+          <Card className="mb-6 bg-slate-800/50 border-slate-700">
             <CardHeader>
-              <CardTitle className="text-slate-100">Video Preview</CardTitle>
+              <CardTitle className="text-slate-100">Original Video Preview</CardTitle>
+              <CardDescription className="text-slate-400">
+                Your uploaded video before processing
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <video
                 ref={videoPreviewRef}
                 controls
                 className="w-full rounded-lg bg-black"
-              />
+                key={videoFile.name}
+              >
+                <source src={URL.createObjectURL(videoFile)} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Processed Video Preview */}
+        {processedVideoUrl && (
+          <Card className="mb-6 bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-slate-100">Processed Video Preview</CardTitle>
+              <CardDescription className="text-slate-400">
+                Your video after silence removal
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <video
+                controls
+                className="w-full rounded-lg bg-black"
+                key="processed-video"
+              >
+                <source src={processedVideoUrl} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              <p className="mt-3 text-sm text-slate-400 text-center">
+                Click the download button above to save this video
+              </p>
             </CardContent>
           </Card>
         )}
