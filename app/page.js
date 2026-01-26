@@ -383,23 +383,92 @@ export default function VideoSilenceRemover() {
               </div>
             </div>
 
-            {/* Threshold Control */}
+            {/* Preset Buttons */}
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-slate-300 mb-3">
+                Quick Presets
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {Object.entries(presets).filter(([key]) => key !== 'custom').map(([key, preset]) => (
+                  <button
+                    key={key}
+                    onClick={() => applyPreset(key)}
+                    disabled={processing}
+                    className={`p-3 rounded-lg border transition-all ${
+                      activePreset === key
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-blue-500 hover:bg-slate-750'
+                    } ${processing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <div className="text-2xl mb-1">{preset.icon}</div>
+                    <div className="text-xs font-semibold">{preset.name}</div>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                {presets[activePreset].description}
+              </p>
+            </div>
+
+            {/* Manual Controls */}
             <div className="mt-6">
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Silence Threshold: {threshold}dB
+                Manual Adjustment
               </label>
-              <input
-                type="range"
-                min="-60"
-                max="-10"
-                value={threshold}
-                onChange={(e) => setThreshold(parseInt(e.target.value))}
-                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+              <button
+                onClick={() => applyPreset('custom')}
                 disabled={processing}
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Lower values detect more silence (-60dB quietest, -10dB loudest)
-              </p>
+                className={`w-full p-2 mb-3 rounded-lg border text-sm transition-all ${
+                  activePreset === 'custom'
+                    ? 'bg-blue-600 border-blue-500 text-white'
+                    : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-blue-500'
+                } ${processing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                ⚙️ Custom Settings
+              </button>
+              
+              {activePreset === 'custom' && (
+                <div className="space-y-4 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+                  {/* Threshold Control */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Silence Threshold: {threshold}dB
+                    </label>
+                    <input
+                      type="range"
+                      min="-60"
+                      max="-10"
+                      value={threshold}
+                      onChange={(e) => setThreshold(parseInt(e.target.value))}
+                      className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      disabled={processing}
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Lower values detect more silence (-60dB quietest, -10dB loudest)
+                    </p>
+                  </div>
+
+                  {/* Duration Control */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Minimum Silence Duration: {minSilenceDuration.toFixed(1)}s
+                    </label>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="2.0"
+                      step="0.1"
+                      value={minSilenceDuration}
+                      onChange={(e) => setMinSilenceDuration(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      disabled={processing}
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Only remove silence longer than this duration
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Process Button */}
