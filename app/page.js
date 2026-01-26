@@ -21,10 +21,15 @@ export default function VideoSilenceRemover() {
   const [threshold, setThreshold] = useState(-30)
   const [minSilenceDuration, setMinSilenceDuration] = useState(0.5)
   const [activePreset, setActivePreset] = useState('custom')
+  const [videoMetadata, setVideoMetadata] = useState(null)
+  const [processingStats, setProcessingStats] = useState(null)
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(null)
+  const [currentStep, setCurrentStep] = useState('')
   
   const ffmpegRef = useRef(null)
   const videoPreviewRef = useRef(null)
   const fileInputRef = useRef(null)
+  const processingStartTime = useRef(null)
   
   // Preset configurations
   const presets = {
