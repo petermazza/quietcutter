@@ -1252,12 +1252,28 @@ export default function VideoSilenceRemover() {
                 <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">C</kbd>
               </div>
               <div className="flex justify-between">
+                <span className="text-slate-300">Processing History</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">H</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-300">Saved Settings</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">S</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-300">Last Used Settings</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">L</kbd>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-slate-300">Preset 1-4</span>
                 <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">1-4</kbd>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-300">This Help</span>
                 <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">?</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-300">Close Panels</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">Esc</kbd>
               </div>
             </div>
             <div className="mt-4 text-xs text-slate-400">
