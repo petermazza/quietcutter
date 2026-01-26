@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
+import { Button } from '../../components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
+import { Progress } from '../../components/ui/progress'
 import { Upload, Download, Play, Loader2, Video, FileVideo } from 'lucide-react'
 
 export default function VideoSilenceRemover() {
