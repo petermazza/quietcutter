@@ -332,10 +332,33 @@ export default function VideoSilenceRemover() {
       
     } catch (error) {
       console.error('Error processing video:', error)
-      setStatusMessage(`Error: ${error.message}`)
+      
+      // Provide user-friendly error messages
+      let errorMessage = 'An error occurred during processing.'
+      
+      if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorMessage = 'Network error: Please check your connection and try again.'
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'Processing timeout: Video may be too large. Try a shorter video.'
+      } else if (error.message.includes('format') || error.message.includes('codec')) {
+        errorMessage = 'Unsupported format: Please convert your video to MP4 and try again.'
+      } else if (error.message.includes('memory')) {
+        errorMessage = 'Out of memory: Video file is too large. Try a smaller file.'
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`
+      }
+      
+      setStatusMessage(errorMessage)
       setProgress(0)
       setCurrentStep('')
       setEstimatedTimeRemaining(null)
+      
+      // Show retry suggestion
+      setTimeout(() => {
+        if (!processing) {
+          setStatusMessage(`${errorMessage} - Click "Remove Silence" to retry.`)
+        }
+      }, 3000)
     } finally {
       setProcessing(false)
     }
