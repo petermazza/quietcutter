@@ -405,9 +405,28 @@ export default function VideoSilenceRemover() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-slate-500 mt-2">
-                {presets[activePreset].description}
-              </p>
+              
+              {/* Active Preset Info Box */}
+              {activePreset !== 'custom' && (
+                <div className="mt-4 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
+                  <div className="text-base font-semibold text-blue-300 mb-2">
+                    {presets[activePreset].icon} {presets[activePreset].name}
+                  </div>
+                  <p className="text-base text-slate-300 mb-3">
+                    {presets[activePreset].description}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-slate-800/50 p-2 rounded">
+                      <div className="text-slate-400 text-xs">Threshold</div>
+                      <div className="text-blue-300 font-semibold">{presets[activePreset].threshold}dB</div>
+                    </div>
+                    <div className="bg-slate-800/50 p-2 rounded">
+                      <div className="text-slate-400 text-xs">Min Duration</div>
+                      <div className="text-blue-300 font-semibold">{presets[activePreset].duration}s</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Manual Controls */}
