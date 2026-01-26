@@ -224,14 +224,14 @@ export default function VideoSilenceRemover() {
           <div className="flex items-center justify-center gap-3 mb-4">
             <Video className="w-10 h-10 text-blue-500" />
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Video Silence Remover
+              Audio Silence Processor
             </h1>
           </div>
           <p className="text-slate-400 text-lg">
-            Remove silent segments from your videos using FFmpeg audio processing
+            Process silent audio segments in your videos using FFmpeg
           </p>
           <p className="text-slate-500 text-sm mt-2">
-            The silenceremove filter speeds through silent parts, making them very brief (0.1s) instead of cutting completely
+            Note: This tool uses silenceremove which processes audio but doesn't shorten video duration. To actually cut and remove silent segments would require complex timestamp detection and video re-encoding.
           </p>
         </div>
 
