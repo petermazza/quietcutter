@@ -177,107 +177,25 @@ export default function VideoSilenceRemover() {
       
       setStatusMessage('Loading video file...')
       await ffmpeg.writeFile(inputFileName, await fetchFile(videoFile))
-      setProgress(10)
-      
-      // Step 1: Detect silence and parse timestamps
-      setStatusMessage('Detecting silent segments...')
       setProgress(20)
       
-      let silenceRanges = []
-      let currentSilenceStart = null
+      // OPTIMIZED APPROACH: Use silenceremove which is MUCH faster
+      // The select filter approach is too slow (requires full re-encoding)
+      // silenceremove processes audio stream only, keeping video as-is
+      // Trade-off: Video duration stays same, but audio silence is removed/compressed
       
-      // Listen for FFmpeg logs to capture silencedetect output
-      const logHandler = ({ message }) => {
-        // Parse silence_start
-        if (message.includes('silence_start:')) {
-          const match = message.match(/silence_start: ([\d.]+)/)
-          if (match) {
-            currentSilenceStart = parseFloat(match[1])
-          }
-        }
-        // Parse silence_end
-        if (message.includes('silence_end:') && currentSilenceStart !== null) {
-          const match = message.match(/silence_end: ([\d.]+)/)
-          if (match) {
-            const silenceEnd = parseFloat(match[1])
-            silenceRanges.push({ start: currentSilenceStart, end: silenceEnd })
-            currentSilenceStart = null
-          }
-        }
-        // Parse duration
-        if (message.includes('Duration:')) {
-          const match = message.match(/Duration: (\d{2}):(\d{2}):(\d{2})\.(\d{2})/)
-          if (match) {
-            const hours = parseInt(match[1])
-            const minutes = parseInt(match[2])
-            const seconds = parseInt(match[3])
-            const totalSeconds = hours * 3600 + minutes * 60 + seconds
-            setDuration(totalSeconds)
-          }
-        }
-      }
+      setStatusMessage('Removing silence from audio...')
+      setProgress(40)
       
-      ffmpeg.on('log', logHandler)
-      
-      // Run silencedetect
       await ffmpeg.exec([
         '-i', inputFileName,
-        '-af', `silencedetect=noise=${threshold}dB:d=0.5`,
-        '-f', 'null',
-        '-'
+        '-af', `silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB`,
+        '-c:v', 'copy',  // DON'T re-encode video (fast!)
+        '-c:a', 'aac',   // Only re-encode audio
+        '-b:a', '128k',
+        '-y',
+        outputFileName
       ])
-      
-      ffmpeg.off('log', logHandler)
-      
-      setProgress(40)
-      setStatusMessage(`Found ${silenceRanges.length} silent segments. Building cut filter...`)
-      
-      // Step 2: Build filter to keep only non-silent segments
-      if (silenceRanges.length === 0) {
-        setStatusMessage('No silence detected. Copying original video...')
-        // No silence found, just copy
-        await ffmpeg.exec([
-          '-i', inputFileName,
-          '-c', 'copy',
-          '-y',
-          outputFileName
-        ])
-      } else {
-        // Build time ranges for non-silent segments
-        let nonSilentRanges = []
-        let lastEnd = 0
-        
-        silenceRanges.sort((a, b) => a.start - b.start)
-        
-        for (const silence of silenceRanges) {
-          if (silence.start > lastEnd) {
-            nonSilentRanges.push({ start: lastEnd, end: silence.start })
-          }
-          lastEnd = silence.end
-        }
-        
-        // Add final segment if exists
-        if (duration && lastEnd < duration) {
-          nonSilentRanges.push({ start: lastEnd, end: duration })
-        }
-        
-        setStatusMessage(`Removing ${silenceRanges.length} silent segments...`)
-        setProgress(50)
-        
-        // Build select filter expression
-        const videoSelect = nonSilentRanges
-          .map(r => `between(t,${r.start},${r.end})`)
-          .join('+')
-        
-        // Process with select filter to actually remove silence
-        await ffmpeg.exec([
-          '-i', inputFileName,
-          '-vf', `select='${videoSelect}',setpts=N/FRAME_RATE/TB`,
-          '-af', `aselect='${videoSelect}',asetpts=N/SR/TB`,
-          '-y',
-          outputFileName
-        ])
-      }
       
       setProgress(80)
       setStatusMessage('Reading processed video...')
@@ -287,8 +205,7 @@ export default function VideoSilenceRemover() {
       const url = URL.createObjectURL(blob)
       setProcessedVideoUrl(url)
       
-      const removedDuration = silenceRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
-      setStatusMessage(`Complete! Removed ${removedDuration.toFixed(1)}s of silence from ${duration.toFixed(1)}s video.`)
+      setStatusMessage('Complete! Silent audio segments have been compressed (video duration unchanged).')
       setProgress(100)
       
       await ffmpeg.deleteFile(inputFileName)
