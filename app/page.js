@@ -810,8 +810,14 @@ export default function VideoSilenceRemover() {
 
         {/* Info Footer */}
         <div className="mt-8 text-center text-slate-500 text-sm space-y-2">
-          <p>All processing happens in your browser. No data is uploaded to any server.</p>
-          <p className="mt-1">Powered by FFmpeg WebAssembly</p>
+          <p>All processing happens on your server. Videos are deleted after processing.</p>
+          <p className="mt-1">Powered by FFmpeg</p>
+          <button
+            onClick={() => setShowKeyboardHelp(true)}
+            className="text-blue-400 hover:text-blue-300 text-xs mt-2"
+          >
+            Press ? for keyboard shortcuts
+          </button>
           
           {/* Safari compatibility note */}
           <div className="mt-4 p-3 bg-blue-900/20 border border-blue-700/30 rounded-lg text-blue-300 text-xs">
@@ -822,6 +828,47 @@ export default function VideoSilenceRemover() {
           </div>
         </div>
       </div>
+      
+      {/* Keyboard Shortcuts Overlay */}
+      {showKeyboardHelp && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowKeyboardHelp(false)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-slate-100">Keyboard Shortcuts</h3>
+              <button onClick={() => setShowKeyboardHelp(false)} className="text-slate-400 hover:text-slate-200">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-slate-300">Upload Video</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">U</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-300">Remove Silence</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">R</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-300">Download Video</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">D</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-300">Toggle Comparison</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">C</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-300">Preset 1-4</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">1-4</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-300">This Help</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-sm">?</kbd>
+              </div>
+            </div>
+            <div className="mt-4 text-xs text-slate-400">
+              Shortcuts work when not typing in input fields
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
