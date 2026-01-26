@@ -88,7 +88,15 @@ export default function VideoSilenceRemover() {
 
   // Auto-load FFmpeg on mount
   useEffect(() => {
-    loadFFmpeg()
+    // Check if browser supports required features
+    if (typeof window !== 'undefined') {
+      // Check for SharedArrayBuffer support
+      if (!crossOriginIsolated) {
+        console.warn('SharedArrayBuffer not available - COEP/COOP headers may not be set correctly')
+        setStatusMessage('Browser may have limited support. Try Chrome/Edge for best experience.')
+      }
+      loadFFmpeg()
+    }
   }, [])
 
   // Handle file selection
