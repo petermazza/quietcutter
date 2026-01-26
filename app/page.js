@@ -401,9 +401,17 @@ export default function VideoSilenceRemover() {
         )}
 
         {/* Info Footer */}
-        <div className="mt-8 text-center text-slate-500 text-sm">
+        <div className="mt-8 text-center text-slate-500 text-sm space-y-2">
           <p>All processing happens in your browser. No data is uploaded to any server.</p>
           <p className="mt-1">Powered by FFmpeg WebAssembly</p>
+          
+          {/* Safari compatibility note */}
+          <div className="mt-4 p-3 bg-blue-900/20 border border-blue-700/30 rounded-lg text-blue-300 text-xs">
+            <p className="font-medium mb-1">💡 Browser Compatibility Note:</p>
+            <p>For best experience, use <strong>Chrome, Edge, or Firefox</strong>.</p>
+            <p className="mt-1">Safari may have limited support due to WebAssembly restrictions.</p>
+            <p className="mt-1">Access via: <strong className="text-blue-400">https://quietcutter.preview.emergentagent.com</strong></p>
+          </div>
         </div>
       </div>
     </div>
