@@ -38,7 +38,7 @@ export default function VideoSilenceRemover() {
     setStatusMessage('Loading FFmpeg WebAssembly...')
     
     try {
-      const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm'
+      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm'
       
       ffmpeg.on('log', ({ message }) => {
         console.log(message)
