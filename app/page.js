@@ -146,7 +146,7 @@ export default function VideoSilenceRemover() {
   }, [])
 
   // Handle file selection
-  const handleFileChange = async (file) => {
+  const handleFileChange = (file) => {
     if (file && file.type.startsWith('video/')) {
       setVideoFile(file)
       setProcessedVideoUrl('')
@@ -157,7 +157,14 @@ export default function VideoSilenceRemover() {
       // Extract video metadata
       const video = document.createElement('video')
       video.preload = 'metadata'
-      video.onloadedmetadata = () => {
+      
+      const handleMetadata = () => {
+        console.log('Video metadata loaded:', {
+          duration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight
+        })
+        
         setVideoMetadata({
           duration: video.duration,
           width: video.videoWidth,
@@ -166,14 +173,17 @@ export default function VideoSilenceRemover() {
           name: file.name,
           type: file.type
         })
+        
         URL.revokeObjectURL(video.src)
+        video.removeEventListener('loadedmetadata', handleMetadata)
       }
+      
+      video.addEventListener('loadedmetadata', handleMetadata)
       video.src = URL.createObjectURL(file)
       
-      // Create preview URL
-      const url = URL.createObjectURL(file)
+      // Create preview URL for video player
       if (videoPreviewRef.current) {
-        videoPreviewRef.current.src = url
+        videoPreviewRef.current.src = URL.createObjectURL(file)
       }
     } else if (file) {
       setStatusMessage('Please select a valid video file')
