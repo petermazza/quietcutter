@@ -26,6 +26,11 @@ export default function VideoSilenceRemover() {
 
   // Load FFmpeg
   const loadFFmpeg = async () => {
+    // Initialize FFmpeg only on client
+    if (!ffmpegRef.current) {
+      ffmpegRef.current = new FFmpeg()
+    }
+    
     const ffmpeg = ffmpegRef.current
     if (loaded) return
     
