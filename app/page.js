@@ -6,7 +6,7 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
 import { Progress } from './components/ui/progress'
-import { Upload, Download, Play, Loader2, Video, FileVideo } from 'lucide-react'
+import { Upload, Download, Play, Loader2, Video, FileVideo, History, Settings, Clock, Star, Trash2, RotateCcw } from 'lucide-react'
 
 export default function VideoSilenceRemover() {
   const [loaded, setLoaded] = useState(false)
@@ -27,6 +27,13 @@ export default function VideoSilenceRemover() {
   const [currentStep, setCurrentStep] = useState('')
   const [comparisonMode, setComparisonMode] = useState(false)
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
+  
+  // Phase 3: History & Settings state
+  const [processingHistory, setProcessingHistory] = useState([])
+  const [savedSettings, setSavedSettings] = useState([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [showSavedSettings, setShowSavedSettings] = useState(false)
+  const [lastUsedSettings, setLastUsedSettings] = useState(null)
   
   const ffmpegRef = useRef(null)
   const videoPreviewRef = useRef(null)
