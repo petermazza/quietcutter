@@ -9,20 +9,20 @@ import { Progress } from '@/components/ui/progress'
 import { Upload, Download, Play, Loader2, Video, FileVideo } from 'lucide-react'
 
 export default function VideoSilenceRemover() {
-  const [loaded, setLoaded] = useState<boolean>(false)
-  const [videoFile, setVideoFile] = useState<File | null>(null)
-  const [processing, setProcessing] = useState<boolean>(false)
-  const [progress, setProgress] = useState<number>(0)
-  const [processedVideoUrl, setProcessedVideoUrl] = useState<string>('')
-  const [duration, setDuration] = useState<number>(0)
-  const [dragActive, setDragActive] = useState<boolean>(false)
-  const [loadingFFmpeg, setLoadingFFmpeg] = useState<boolean>(false)
-  const [statusMessage, setStatusMessage] = useState<string>('Ready to process video')
-  const [threshold, setThreshold] = useState<number>(-30)
+  const [loaded, setLoaded] = useState(false)
+  const [videoFile, setVideoFile] = useState(null)
+  const [processing, setProcessing] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [processedVideoUrl, setProcessedVideoUrl] = useState('')
+  const [duration, setDuration] = useState(0)
+  const [dragActive, setDragActive] = useState(false)
+  const [loadingFFmpeg, setLoadingFFmpeg] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('Ready to process video')
+  const [threshold, setThreshold] = useState(-30)
   
-  const ffmpegRef = useRef<FFmpeg>(new FFmpeg())
-  const videoPreviewRef = useRef<HTMLVideoElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const ffmpegRef = useRef(new FFmpeg())
+  const videoPreviewRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   // Load FFmpeg
   const loadFFmpeg = async () => {
