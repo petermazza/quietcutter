@@ -420,7 +420,7 @@ export default function VideoSilenceRemover() {
                 </div>
 
                 {processedVideoUrl && (
-                  <div className="pt-4">
+                  <div className="pt-4 space-y-3">
                     <Button
                       onClick={downloadVideo}
                       className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
@@ -428,9 +428,13 @@ export default function VideoSilenceRemover() {
                       <Download className="w-5 h-5 mr-2" />
                       Download Processed Video
                     </Button>
-                    <p className="text-xs text-slate-500 text-center mt-2">
-                      Click above to save the processed video to your device
-                    </p>
+                    <div className="text-xs text-slate-400 text-center space-y-1">
+                      <p>Click above to save the processed video to your device</p>
+                      <p className="text-slate-500">
+                        Safari users: If download doesn't start, the video will open in a new tab.
+                        Right-click the video and select "Download Video" or "Save Video As..."
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
