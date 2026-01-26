@@ -232,6 +232,27 @@ export default function VideoSilenceRemover() {
             </CardContent>
           </Card>
         )}
+        
+        {/* FFmpeg Status Card */}
+        {!loadingFFmpeg && (
+          <Card className={`mb-6 ${loaded ? 'bg-green-900/20 border-green-700' : 'bg-yellow-900/20 border-yellow-700'}`}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                {loaded ? (
+                  <>
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <p className="text-green-400 font-medium">FFmpeg Loaded Successfully - Ready to Process Videos</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+                    <p className="text-yellow-400 font-medium">{statusMessage}</p>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upload Section */}
         <Card className="mb-6 bg-slate-800/50 border-slate-700">
