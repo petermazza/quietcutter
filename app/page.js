@@ -215,11 +215,10 @@ export default function VideoSilenceRemover() {
     }
   }
 
-  // Download processed video
+  // Download processed video (Safari-compatible)
   const downloadVideo = () => {
     console.log('Download button clicked!')
     console.log('processedVideoUrl:', processedVideoUrl)
-    console.log('videoFile:', videoFile)
     
     if (!processedVideoUrl) {
       console.error('No processed video URL available')
@@ -228,15 +227,33 @@ export default function VideoSilenceRemover() {
     }
     
     try {
+      // Safari-compatible download: Use link with target=_blank
       const a = document.createElement('a')
       a.href = processedVideoUrl
       a.download = `processed_${videoFile?.name || 'video.mp4'}`
-      a.style.display = 'none'
+      a.target = '_blank'  // Safari needs this
+      a.rel = 'noopener noreferrer'
+      
+      // Safari requires the link to be in DOM and clicked synchronously
       document.body.appendChild(a)
+      
+      // For Safari: Use MouseEvent instead of click()
+      const clickEvent = new MouseEvent('click', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+      })
+      
       console.log('Triggering download:', a.download)
-      a.click()
-      document.body.removeChild(a)
-      setStatusMessage('Download started!')
+      a.dispatchEvent(clickEvent)
+      
+      // Cleanup after a delay
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(processedVideoUrl)
+      }, 100)
+      
+      setStatusMessage('Download started! Check your Downloads folder.')
       console.log('Download triggered successfully')
     } catch (error) {
       console.error('Download error:', error)
