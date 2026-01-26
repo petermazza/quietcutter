@@ -80,7 +80,7 @@ export default function VideoSilenceRemover() {
       setStatusMessage('FFmpeg loaded successfully')
     } catch (error) {
       console.error('Failed to load FFmpeg:', error)
-      setStatusMessage('Failed to load FFmpeg. Please refresh the page.')
+      setStatusMessage(`Failed to load FFmpeg: ${error.message}. Please refresh the page.`)
     } finally {
       setLoadingFFmpeg(false)
     }
