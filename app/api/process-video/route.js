@@ -14,6 +14,7 @@ export async function POST(request) {
     const formData = await request.formData();
     const videoFile = formData.get('video');
     const threshold = formData.get('threshold') || '-30';
+    const minDuration = formData.get('minDuration') || '0.5';
     
     if (!videoFile) {
       return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
@@ -31,7 +32,7 @@ export async function POST(request) {
     await writeFile(inputPath, buffer);
     
     // Step 1: Detect silence using native FFmpeg
-    const detectCmd = `ffmpeg -i ${inputPath} -af silencedetect=noise=${threshold}dB:d=0.5 -f null - 2> ${detectPath}`;
+    const detectCmd = `ffmpeg -i ${inputPath} -af silencedetect=noise=${threshold}dB:d=${minDuration} -f null - 2> ${detectPath}`;
     await execAsync(detectCmd);
     
     // Step 2: Parse silence timestamps
