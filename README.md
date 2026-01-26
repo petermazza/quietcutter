@@ -21,6 +21,27 @@ A robust, single-page **Client-Side Video Silence Remover** built with Next.js 1
 - **Video Processing**: FFmpeg.wasm (@ffmpeg/ffmpeg v0.12.10)
 - **Icons**: Lucide React
 
+## How to Access
+
+**Public URL**: [https://quietcutter.preview.emergentagent.com](https://quietcutter.preview.emergentagent.com)
+
+**Local Development**: [http://localhost:3000](http://localhost:3000)
+
+### Important for Safari Users
+
+If you're experiencing connection issues in Safari, this is due to the strict security headers required for FFmpeg.wasm:
+
+**Recommended Browsers**:
+- ✅ Chrome 92+ (Best performance)
+- ✅ Edge 92+ (Best performance)
+- ✅ Firefox 95+
+- ⚠️ Safari 16.4+ (Limited support due to WebAssembly restrictions)
+
+**If Safari won't connect**:
+1. Use Chrome, Edge, or Firefox instead
+2. These browsers have better WebAssembly and SharedArrayBuffer support
+3. All modern features work seamlessly in Chromium-based browsers
+
 ## Prerequisites
 
 - Node.js 18+ or Yarn 1.22+
