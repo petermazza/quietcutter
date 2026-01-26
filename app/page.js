@@ -87,7 +87,7 @@ export default function VideoSilenceRemover() {
   }, [])
 
   // Handle file selection
-  const handleFileChange = (file: File | null) => {
+  const handleFileChange = (file) => {
     if (file && file.type.startsWith('video/')) {
       setVideoFile(file)
       setProcessedVideoUrl('')
@@ -105,7 +105,7 @@ export default function VideoSilenceRemover() {
   }
 
   // Handle drag and drop
-  const handleDrag = (e: React.DragEvent) => {
+  const handleDrag = (e) => {
     e.preventDefault()
     e.stopPropagation()
     if (e.type === 'dragenter' || e.type === 'dragover') {
@@ -115,7 +115,7 @@ export default function VideoSilenceRemover() {
     }
   }
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
