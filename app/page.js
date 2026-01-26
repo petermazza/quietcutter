@@ -160,56 +160,51 @@ export default function VideoSilenceRemover() {
     }
   }
 
-  // Process video to remove silence
+  // Process video to remove silence (SERVER-SIDE)
   const processVideo = async () => {
     if (!videoFile || !loaded) return
     
     setProcessing(true)
     setProgress(0)
-    setDuration(0)
-    setStatusMessage('Processing video...')
-    
-    const ffmpeg = ffmpegRef.current
+    setStatusMessage('Uploading video to server...')
     
     try {
-      const inputFileName = 'input.mp4'
-      const outputFileName = 'output.mp4'
+      // Prepare form data
+      const formData = new FormData()
+      formData.append('video', videoFile)
+      formData.append('threshold', threshold.toString())
       
-      setStatusMessage('Loading video file...')
-      await ffmpeg.writeFile(inputFileName, await fetchFile(videoFile))
-      setProgress(20)
+      setProgress(10)
+      setStatusMessage('Processing on server (this will actually shorten the video)...')
       
-      // OPTIMIZED APPROACH: Use silenceremove which is MUCH faster
-      // The select filter approach is too slow (requires full re-encoding)
-      // silenceremove processes audio stream only, keeping video as-is
-      // Trade-off: Video duration stays same, but audio silence is removed/compressed
+      // Upload and process on server
+      const response = await fetch('/api/process-video', {
+        method: 'POST',
+        body: formData,
+      })
       
-      setStatusMessage('Removing silence from audio...')
-      setProgress(40)
+      setProgress(50)
       
-      await ffmpeg.exec([
-        '-i', inputFileName,
-        '-af', `silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB`,
-        '-c:v', 'copy',  // DON'T re-encode video (fast!)
-        '-c:a', 'aac',   // Only re-encode audio
-        '-b:a', '128k',
-        '-y',
-        outputFileName
-      ])
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.details || 'Processing failed')
+      }
       
       setProgress(80)
-      setStatusMessage('Reading processed video...')
+      setStatusMessage('Downloading processed video...')
       
-      const data = await ffmpeg.readFile(outputFileName)
-      const blob = new Blob([data], { type: 'video/mp4' })
+      // Get duration metadata from headers
+      const originalDuration = parseFloat(response.headers.get('X-Original-Duration') || '0')
+      const processedDuration = parseFloat(response.headers.get('X-Processed-Duration') || '0')
+      const removedDuration = parseFloat(response.headers.get('X-Removed-Duration') || '0')
+      
+      // Get video blob
+      const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       setProcessedVideoUrl(url)
       
-      setStatusMessage('Complete! Silent audio segments have been compressed (video duration unchanged).')
       setProgress(100)
-      
-      await ffmpeg.deleteFile(inputFileName)
-      await ffmpeg.deleteFile(outputFileName)
+      setStatusMessage(`Complete! Removed ${removedDuration.toFixed(1)}s of silence. Video shortened from ${originalDuration.toFixed(1)}s to ${processedDuration.toFixed(1)}s.`)
       
     } catch (error) {
       console.error('Error processing video:', error)
