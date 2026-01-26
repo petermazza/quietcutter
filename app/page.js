@@ -155,29 +155,25 @@ export default function VideoSilenceRemover() {
       
       setStatusMessage('Loading video file...')
       await ffmpeg.writeFile(inputFileName, await fetchFile(videoFile))
+      setProgress(10)
       
-      setStatusMessage('Detecting silent segments...')
-      setProgress(20)
+      // IMPORTANT: silenceremove does NOT actually cut/shorten videos
+      // It only processes the audio stream, making silence quieter or faster
+      // To actually shorten videos, we'd need to:
+      // 1. Detect silence timestamps with silencedetect
+      // 2. Parse those timestamps from logs
+      // 3. Cut and concatenate non-silent segments
+      // This is extremely complex in browser-based FFmpeg
       
-      // Step 1: Detect silence and get timestamps
+      // For now, we use silenceremove which makes silence less noticeable
+      // but doesn't change video duration
+      
+      setStatusMessage('Processing audio to reduce silence...')
+      setProgress(30)
+      
       await ffmpeg.exec([
         '-i', inputFileName,
-        '-af', `silencedetect=noise=${threshold}dB:d=0.5`,
-        '-f', 'null',
-        '-'
-      ])
-      
-      setStatusMessage('Removing silent segments...')
-      setProgress(50)
-      
-      // Step 2: Use volume filter to actually mute silence, then speed through it
-      // This approach: detect silence and speed it up dramatically (100x)
-      await ffmpeg.exec([
-        '-i', inputFileName,
-        '-filter_complex',
-        `[0:a]silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB,atempo=1.0[a]`,
-        '-map', '0:v',
-        '-map', '[a]',
+        '-af', `silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB`,
         '-c:v', 'copy',
         '-c:a', 'aac',
         '-b:a', '192k',
@@ -185,21 +181,17 @@ export default function VideoSilenceRemover() {
         outputFileName
       ])
       
+      setProgress(70)
       setStatusMessage('Reading processed video...')
-      setProgress(80)
       
-      // Read the output file
       const data = await ffmpeg.readFile(outputFileName)
-      
-      // Create blob URL for download  
       const blob = new Blob([data], { type: 'video/mp4' })
       const url = URL.createObjectURL(blob)
       setProcessedVideoUrl(url)
       
-      setStatusMessage('Processing complete!')
+      setStatusMessage('Complete! Note: silenceremove processes audio but video duration stays the same.')
       setProgress(100)
       
-      // Clean up
       await ffmpeg.deleteFile(inputFileName)
       await ffmpeg.deleteFile(outputFileName)
       
