@@ -146,12 +146,29 @@ export default function VideoSilenceRemover() {
   }, [])
 
   // Handle file selection
-  const handleFileChange = (file) => {
+  const handleFileChange = async (file) => {
     if (file && file.type.startsWith('video/')) {
       setVideoFile(file)
       setProcessedVideoUrl('')
       setProgress(0)
+      setProcessingStats(null)
       setStatusMessage(`Selected: ${file.name}`)
+      
+      // Extract video metadata
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      video.onloadedmetadata = () => {
+        setVideoMetadata({
+          duration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight,
+          size: file.size,
+          name: file.name,
+          type: file.type
+        })
+        URL.revokeObjectURL(video.src)
+      }
+      video.src = URL.createObjectURL(file)
       
       // Create preview URL
       const url = URL.createObjectURL(file)
