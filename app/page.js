@@ -20,7 +20,7 @@ export default function VideoSilenceRemover() {
   const [statusMessage, setStatusMessage] = useState('Ready to process video')
   const [threshold, setThreshold] = useState(-30)
   
-  const ffmpegRef = useRef(new FFmpeg())
+  const ffmpegRef = useRef(null)
   const videoPreviewRef = useRef(null)
   const fileInputRef = useRef(null)
 
