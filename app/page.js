@@ -544,10 +544,10 @@ export default function VideoSilenceRemover() {
           
           {/* Safari compatibility note */}
           <div className="mt-4 p-3 bg-blue-900/20 border border-blue-700/30 rounded-lg text-blue-300 text-xs">
-            <p className="font-medium mb-1">💡 Browser Compatibility Note:</p>
-            <p>For best experience, use <strong>Chrome, Edge, or Firefox</strong>.</p>
-            <p className="mt-1">Safari may have limited support due to WebAssembly restrictions.</p>
-            <p className="mt-1">Access via: <strong className="text-blue-400">https://quietcutter.preview.emergentagent.com</strong></p>
+            <p className="font-medium mb-1">💡 Browser Compatibility:</p>
+            <p><strong>Recommended:</strong> Chrome 92+, Edge 92+, Firefox 95+</p>
+            <p className="mt-1"><strong>Safari:</strong> Safari 15.2+ supported (macOS Monterey or iOS 15.2+)</p>
+            <p className="mt-1">Access: <strong className="text-blue-400">https://quietcutter.preview.emergentagent.com</strong></p>
           </div>
         </div>
       </div>
