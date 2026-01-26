@@ -207,7 +207,9 @@ export default function VideoSilenceRemover() {
     
     setProcessing(true)
     setProgress(0)
+    setCurrentStep('Uploading')
     setStatusMessage('Uploading video to server...')
+    processingStartTime.current = Date.now()
     
     try {
       // Prepare form data
@@ -217,7 +219,14 @@ export default function VideoSilenceRemover() {
       formData.append('minDuration', minSilenceDuration.toString())
       
       setProgress(10)
+      setCurrentStep('Detecting Silence')
       setStatusMessage('Processing on server (this will actually shorten the video)...')
+      
+      // Estimate time based on video duration
+      if (videoMetadata?.duration) {
+        const estimatedSeconds = Math.ceil(videoMetadata.duration * 0.6) // ~0.6s per second of video
+        setEstimatedTimeRemaining(estimatedSeconds)
+      }
       
       // Upload and process on server
       const response = await fetch('/api/process-video', {
@@ -226,6 +235,7 @@ export default function VideoSilenceRemover() {
       })
       
       setProgress(50)
+      setCurrentStep('Cutting Segments')
       
       if (!response.ok) {
         const error = await response.json()
@@ -233,6 +243,7 @@ export default function VideoSilenceRemover() {
       }
       
       setProgress(80)
+      setCurrentStep('Finalizing')
       setStatusMessage('Downloading processed video...')
       
       // Get duration metadata from headers
@@ -245,13 +256,31 @@ export default function VideoSilenceRemover() {
       const url = URL.createObjectURL(blob)
       setProcessedVideoUrl(url)
       
+      // Calculate processing stats
+      const processingTime = (Date.now() - processingStartTime.current) / 1000
+      const reductionPercent = ((removedDuration / originalDuration) * 100).toFixed(1)
+      
+      setProcessingStats({
+        originalDuration,
+        processedDuration,
+        removedDuration,
+        processingTime,
+        reductionPercent,
+        originalSize: videoMetadata?.size || 0,
+        processedSize: blob.size
+      })
+      
       setProgress(100)
-      setStatusMessage(`Complete! Removed ${removedDuration.toFixed(1)}s of silence. Video shortened from ${originalDuration.toFixed(1)}s to ${processedDuration.toFixed(1)}s.`)
+      setCurrentStep('Complete')
+      setStatusMessage(`Complete! Removed ${removedDuration.toFixed(1)}s of silence (${reductionPercent}% reduction). Video shortened from ${originalDuration.toFixed(1)}s to ${processedDuration.toFixed(1)}s.`)
+      setEstimatedTimeRemaining(null)
       
     } catch (error) {
       console.error('Error processing video:', error)
       setStatusMessage(`Error: ${error.message}`)
       setProgress(0)
+      setCurrentStep('')
+      setEstimatedTimeRemaining(null)
     } finally {
       setProcessing(false)
     }
