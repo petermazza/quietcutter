@@ -57,6 +57,128 @@ export default function VideoSilenceRemover() {
     setMinSilenceDuration(preset.duration)
     setActivePreset(presetName)
   }
+  
+  // Load history and settings from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedHistory = localStorage.getItem('videoSilenceRemover_history')
+        if (savedHistory) {
+          setProcessingHistory(JSON.parse(savedHistory))
+        }
+        
+        const savedSettingsData = localStorage.getItem('videoSilenceRemover_savedSettings')
+        if (savedSettingsData) {
+          setSavedSettings(JSON.parse(savedSettingsData))
+        }
+        
+        const lastSettings = localStorage.getItem('videoSilenceRemover_lastSettings')
+        if (lastSettings) {
+          setLastUsedSettings(JSON.parse(lastSettings))
+        }
+      } catch (error) {
+        console.error('Failed to load from localStorage:', error)
+      }
+    }
+  }, [])
+  
+  // Save history to localStorage
+  const saveHistoryToStorage = (history) => {
+    try {
+      localStorage.setItem('videoSilenceRemover_history', JSON.stringify(history))
+    } catch (error) {
+      console.error('Failed to save history:', error)
+    }
+  }
+  
+  // Save settings to localStorage
+  const saveSettingsToStorage = (settings) => {
+    try {
+      localStorage.setItem('videoSilenceRemover_savedSettings', JSON.stringify(settings))
+    } catch (error) {
+      console.error('Failed to save settings:', error)
+    }
+  }
+  
+  // Save last used settings
+  const saveLastUsedSettings = (settings) => {
+    try {
+      localStorage.setItem('videoSilenceRemover_lastSettings', JSON.stringify(settings))
+      setLastUsedSettings(settings)
+    } catch (error) {
+      console.error('Failed to save last settings:', error)
+    }
+  }
+  
+  // Add to processing history
+  const addToHistory = (fileName, stats, settings) => {
+    const historyItem = {
+      id: Date.now(),
+      fileName,
+      timestamp: new Date().toISOString(),
+      originalDuration: stats.originalDuration,
+      processedDuration: stats.processedDuration,
+      reductionPercent: stats.reductionPercent,
+      settings: {
+        threshold: settings.threshold,
+        minDuration: settings.minDuration,
+        preset: settings.preset
+      }
+    }
+    
+    const newHistory = [historyItem, ...processingHistory].slice(0, 10) // Keep last 10
+    setProcessingHistory(newHistory)
+    saveHistoryToStorage(newHistory)
+  }
+  
+  // Clear history
+  const clearHistory = () => {
+    setProcessingHistory([])
+    localStorage.removeItem('videoSilenceRemover_history')
+  }
+  
+  // Save current settings as favorite
+  const saveCurrentSettings = () => {
+    const settingName = prompt('Name for this preset:', `Custom ${savedSettings.length + 1}`)
+    if (!settingName) return
+    
+    const newSetting = {
+      id: Date.now(),
+      name: settingName,
+      threshold,
+      minDuration: minSilenceDuration,
+      preset: activePreset,
+      createdAt: new Date().toISOString()
+    }
+    
+    const newSettings = [...savedSettings, newSetting]
+    setSavedSettings(newSettings)
+    saveSettingsToStorage(newSettings)
+  }
+  
+  // Delete a saved setting
+  const deleteSavedSetting = (id) => {
+    const newSettings = savedSettings.filter(s => s.id !== id)
+    setSavedSettings(newSettings)
+    saveSettingsToStorage(newSettings)
+  }
+  
+  // Apply saved setting
+  const applySavedSetting = (setting) => {
+    setThreshold(setting.threshold)
+    setMinSilenceDuration(setting.minDuration)
+    setActivePreset('custom')
+    setShowSavedSettings(false)
+  }
+  
+  // Apply last used settings
+  const applyLastUsedSettings = () => {
+    if (lastUsedSettings) {
+      setThreshold(lastUsedSettings.threshold)
+      setMinSilenceDuration(lastUsedSettings.minDuration)
+      setActivePreset(lastUsedSettings.preset || 'custom')
+    }
+  }
 
   // Load FFmpeg
   const loadFFmpeg = async () => {
