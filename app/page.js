@@ -474,6 +474,23 @@ export default function VideoSilenceRemover() {
         processedSize: blob.size
       })
       
+      // Save to history and last used settings
+      addToHistory(videoFile.name, {
+        originalDuration,
+        processedDuration,
+        reductionPercent
+      }, {
+        threshold,
+        minDuration: minSilenceDuration,
+        preset: activePreset
+      })
+      
+      saveLastUsedSettings({
+        threshold,
+        minDuration: minSilenceDuration,
+        preset: activePreset
+      })
+      
       setProgress(100)
       setCurrentStep('Complete')
       setStatusMessage(`Complete! Removed ${removedDuration.toFixed(1)}s of silence (${reductionPercent}% reduction). Video shortened from ${originalDuration.toFixed(1)}s to ${processedDuration.toFixed(1)}s.`)
