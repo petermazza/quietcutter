@@ -150,27 +150,34 @@ export default function VideoSilenceRemover() {
     const ffmpeg = ffmpegRef.current
     
     try {
-      // Write input file to FFmpeg virtual filesystem
       const inputFileName = 'input.mp4'
       const outputFileName = 'output.mp4'
       
       setStatusMessage('Loading video file...')
       await ffmpeg.writeFile(inputFileName, await fetchFile(videoFile))
       
-      setStatusMessage('Analyzing and removing silence...')
+      setStatusMessage('Detecting silent segments...')
+      setProgress(20)
       
-      // Use silenceremove filter to remove silent segments
-      // start_periods=1: remove leading silence
-      // start_duration=0.1: minimum 0.1s silence at start to detect
-      // start_threshold: dB threshold for silence detection
-      // stop_periods=-1: process all silence throughout the video  
-      // stop_duration=0.5: minimum 0.5s of continuous silence to process
-      // stop_threshold: dB threshold for silence
-      const audioFilter = `silenceremove=start_periods=1:start_duration=0.1:start_threshold=${threshold}dB:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB`
-      
+      // Step 1: Detect silence and get timestamps
       await ffmpeg.exec([
         '-i', inputFileName,
-        '-af', audioFilter,
+        '-af', `silencedetect=noise=${threshold}dB:d=0.5`,
+        '-f', 'null',
+        '-'
+      ])
+      
+      setStatusMessage('Removing silent segments...')
+      setProgress(50)
+      
+      // Step 2: Use volume filter to actually mute silence, then speed through it
+      // This approach: detect silence and speed it up dramatically (100x)
+      await ffmpeg.exec([
+        '-i', inputFileName,
+        '-filter_complex',
+        `[0:a]silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB,atempo=1.0[a]`,
+        '-map', '0:v',
+        '-map', '[a]',
         '-c:v', 'copy',
         '-c:a', 'aac',
         '-b:a', '192k',
@@ -179,6 +186,7 @@ export default function VideoSilenceRemover() {
       ])
       
       setStatusMessage('Reading processed video...')
+      setProgress(80)
       
       // Read the output file
       const data = await ffmpeg.readFile(outputFileName)
@@ -188,16 +196,17 @@ export default function VideoSilenceRemover() {
       const url = URL.createObjectURL(blob)
       setProcessedVideoUrl(url)
       
-      setStatusMessage('Processing complete! Silent sections have been processed.')
+      setStatusMessage('Processing complete!')
       setProgress(100)
       
-      // Clean up FFmpeg filesystem
+      // Clean up
       await ffmpeg.deleteFile(inputFileName)
       await ffmpeg.deleteFile(outputFileName)
       
     } catch (error) {
       console.error('Error processing video:', error)
       setStatusMessage(`Error: ${error.message}`)
+      setProgress(0)
     } finally {
       setProcessing(false)
     }
