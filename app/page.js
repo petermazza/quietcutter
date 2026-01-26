@@ -70,11 +70,10 @@ export default function VideoSilenceRemover() {
         }
       })
 
-      // Load FFmpeg with multi-threaded core - using toBlobURL with jsdelivr CDN
+      // Load FFmpeg with single-threaded core for better compatibility
       await ffmpeg.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-        workerURL: await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript'),
       })
       
       setLoaded(true)
