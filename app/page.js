@@ -160,10 +160,14 @@ export default function VideoSilenceRemover() {
       setStatusMessage('Analyzing audio for silence...')
       
       // Use silenceremove filter to remove silent segments
-      // stop_periods=-1: remove all silent periods
+      // start_periods=1: process from the start
+      // start_duration=0: minimum silence duration at start
+      // start_threshold: volume threshold for start silence
+      // stop_periods=-1: remove all silent periods throughout
       // stop_duration=0.5: consider segments longer than 0.5s as silence
-      // stop_threshold=-30dB: volume threshold for silence detection
-      const filterComplex = `silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB`
+      // stop_threshold: volume threshold for silence detection
+      // detection=peak: use peak detection for better accuracy
+      const filterComplex = `silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:detection=peak:stop_periods=-1:stop_duration=0.5:stop_threshold=${threshold}dB:detection=peak`
       
       setStatusMessage('Removing silent segments...')
       
@@ -173,6 +177,7 @@ export default function VideoSilenceRemover() {
         '-c:v', 'copy',
         '-c:a', 'aac',
         '-b:a', '192k',
+        '-y',
         outputFileName
       ])
       
