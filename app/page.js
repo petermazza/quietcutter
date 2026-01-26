@@ -147,6 +147,51 @@ export default function VideoSilenceRemover() {
       loadFFmpeg()
     }
   }, [])
+  
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Don't trigger shortcuts if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+      
+      switch(e.key.toLowerCase()) {
+        case 'u':
+          // Upload (trigger file input)
+          if (!processing) fileInputRef.current?.click()
+          break
+        case 'r':
+          // Remove silence (process)
+          if (videoFile && !processing && loaded) processVideo()
+          break
+        case 'd':
+          // Download
+          if (processedVideoUrl && !processing) downloadVideo()
+          break
+        case 'c':
+          // Toggle comparison mode
+          if (processedVideoUrl) setComparisonMode(!comparisonMode)
+          break
+        case '?':
+          // Show keyboard help
+          setShowKeyboardHelp(!showKeyboardHelp)
+          break
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+          // Quick preset selection
+          const presetKeys = ['podcast', 'screenRecording', 'lecture', 'interview']
+          const presetIndex = parseInt(e.key) - 1
+          if (presetIndex >= 0 && presetIndex < presetKeys.length && !processing) {
+            applyPreset(presetKeys[presetIndex])
+          }
+          break
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [videoFile, processing, loaded, processedVideoUrl, comparisonMode, showKeyboardHelp])
 
   // Handle file selection
   const handleFileChange = (file) => {
