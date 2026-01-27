@@ -1483,6 +1483,18 @@ export default function VideoSilenceRemover() {
                 controls
                 className="w-full rounded-lg bg-black"
                 key={videoFile.name}
+                onLoadedMetadata={(e) => {
+                  // Fallback metadata extraction from visible video element
+                  const video = e.target
+                  if (video.duration && video.videoWidth) {
+                    setVideoMetadata(prev => ({
+                      ...prev,
+                      duration: video.duration,
+                      width: video.videoWidth,
+                      height: video.videoHeight
+                    }))
+                  }
+                }}
               >
                 <source src={URL.createObjectURL(videoFile)} type="video/mp4" />
                 Your browser does not support the video tag.
