@@ -528,22 +528,31 @@ export default function VideoSilenceRemover() {
         type: file.type
       })
       
-      // Create preview URL for video player
-      if (videoPreviewRef.current) {
-        const url = URL.createObjectURL(file)
-        videoPreviewRef.current.src = url
+      // Create a hidden video element for metadata extraction
+      const url = URL.createObjectURL(file)
+      
+      // Use the hidden metadata video element
+      if (metadataVideoRef.current) {
+        metadataVideoRef.current.src = url
         
-        // Extract full metadata from preview video element
-        videoPreviewRef.current.onloadedmetadata = () => {
-          console.log('Preview video metadata loaded')
+        metadataVideoRef.current.onloadedmetadata = () => {
+          console.log('Metadata loaded:', {
+            duration: metadataVideoRef.current.duration,
+            width: metadataVideoRef.current.videoWidth,
+            height: metadataVideoRef.current.videoHeight
+          })
           setVideoMetadata({
-            duration: videoPreviewRef.current.duration,
-            width: videoPreviewRef.current.videoWidth,
-            height: videoPreviewRef.current.videoHeight,
+            duration: metadataVideoRef.current.duration,
+            width: metadataVideoRef.current.videoWidth,
+            height: metadataVideoRef.current.videoHeight,
             size: file.size,
             name: file.name,
             type: file.type
           })
+        }
+        
+        metadataVideoRef.current.onerror = (e) => {
+          console.error('Error loading video metadata:', e)
         }
       }
     } else if (file) {
