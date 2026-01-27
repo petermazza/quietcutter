@@ -1521,6 +1521,147 @@ export default function VideoSilenceRemover() {
           </div>
         </div>
       )}
+      
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowUpgradeModal(false)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                <Crown className="w-6 h-6 text-yellow-500" />
+                Upgrade to Pro
+              </h3>
+              <button onClick={() => setShowUpgradeModal(false)} className="text-slate-400 hover:text-slate-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <p className="text-slate-400 mb-6">Unlock unlimited processing and premium features</p>
+            
+            {/* Pricing Cards */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Monthly */}
+              <div className="bg-slate-900/50 border border-slate-600 rounded-lg p-4">
+                <div className="text-sm text-slate-400 mb-1">Monthly</div>
+                <div className="text-2xl font-bold text-slate-100 mb-3">$9<span className="text-sm font-normal text-slate-400">/mo</span></div>
+                <button 
+                  className="w-full py-2 px-4 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-all"
+                  onClick={() => alert('Stripe integration coming soon! For now, contact us for access.')}
+                >
+                  Subscribe
+                </button>
+              </div>
+              
+              {/* Lifetime */}
+              <div className="bg-gradient-to-br from-blue-900/50 to-purple-900/50 border-2 border-blue-500 rounded-lg p-4 relative">
+                <div className="absolute -top-2 -right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                  BEST VALUE
+                </div>
+                <div className="text-sm text-blue-300 mb-1">Lifetime</div>
+                <div className="text-2xl font-bold text-slate-100 mb-1">$49</div>
+                <div className="text-xs text-slate-400 mb-3">One-time payment</div>
+                <button 
+                  className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg text-sm font-medium transition-all"
+                  onClick={() => alert('Stripe integration coming soon! For now, contact us for access.')}
+                >
+                  Buy Lifetime
+                </button>
+              </div>
+            </div>
+            
+            {/* Features Comparison */}
+            <div className="bg-slate-900/30 rounded-lg p-4 mb-6">
+              <div className="text-sm font-medium text-slate-300 mb-3">Pro Features:</div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Check className="w-4 h-4 text-green-500" />
+                  Unlimited videos/day
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Check className="w-4 h-4 text-green-500" />
+                  Up to 2 hour videos
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Check className="w-4 h-4 text-green-500" />
+                  Unlimited saved settings
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Check className="w-4 h-4 text-green-500" />
+                  50 items in history
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Check className="w-4 h-4 text-green-500" />
+                  Priority processing
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Check className="w-4 h-4 text-green-500" />
+                  Export settings
+                </div>
+              </div>
+            </div>
+            
+            {/* Already have license key */}
+            <div className="text-center">
+              <button 
+                onClick={() => { setShowUpgradeModal(false); setShowLicenseModal(true); }}
+                className="text-sm text-blue-400 hover:text-blue-300"
+              >
+                Already have a license key? Click here
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* License Key Modal */}
+      {showLicenseModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowLicenseModal(false)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-blue-500" />
+                Activate License
+              </h3>
+              <button onClick={() => setShowLicenseModal(false)} className="text-slate-400 hover:text-slate-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <p className="text-slate-400 mb-4">Enter your license key to unlock Pro features</p>
+            
+            <div className="space-y-4">
+              <div>
+                <input
+                  type="text"
+                  value={licenseKeyInput}
+                  onChange={(e) => setLicenseKeyInput(e.target.value.toUpperCase())}
+                  placeholder="LIFE-XXXX-XXXX-XXXX"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none font-mono tracking-wider"
+                />
+                {licenseError && (
+                  <p className="text-red-400 text-sm mt-2">{licenseError}</p>
+                )}
+              </div>
+              
+              <button
+                onClick={activateLicenseKey}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-medium transition-all"
+              >
+                Activate License
+              </button>
+              
+              <div className="text-center">
+                <button 
+                  onClick={() => { setShowLicenseModal(false); setShowUpgradeModal(true); }}
+                  className="text-sm text-slate-400 hover:text-slate-300"
+                >
+                  Don't have a key? Get one here
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
