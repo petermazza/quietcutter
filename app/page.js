@@ -907,18 +907,6 @@ export default function VideoSilenceRemover() {
             </CardContent>
           </Card>
         )}
-
-        {/* FFmpeg Loading Status */}
-        {loadingFFmpeg && (
-          <Card className="mb-6 bg-slate-800/50 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                <p className="text-slate-300">Loading FFmpeg WebAssembly engine...</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
         
         {/* Upload Section */}
         <Card className="mb-6 bg-slate-800/50 border-slate-700">
