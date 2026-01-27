@@ -68,6 +68,7 @@ export default function VideoSilenceRemover() {
   
   const ffmpegRef = useRef(null)
   const videoPreviewRef = useRef(null)
+  const metadataVideoRef = useRef(null) // Hidden video element for metadata extraction
   const fileInputRef = useRef(null)
   const processingStartTime = useRef(null)
   const processedVideoRef = useRef(null)
