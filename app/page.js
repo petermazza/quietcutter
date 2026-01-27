@@ -869,7 +869,7 @@ export default function VideoSilenceRemover() {
               Saved
               {savedSettings.length > 0 && (
                 <span className="bg-slate-700 text-xs px-1.5 rounded-full">
-                  {savedSettings.length}/{planLimits.maxSavedSettings === Infinity ? '∞' : planLimits.maxSavedSettings}
+                  {savedSettings.length}/{SHARED_LIMITS.maxSavedSettings}
                 </span>
               )}
             </button>
