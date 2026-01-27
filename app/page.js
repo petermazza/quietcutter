@@ -831,7 +831,7 @@ export default function VideoSilenceRemover() {
           <img 
             src="/quietcutter-logo.png" 
             alt="QuietCutter - Make every second count" 
-            className="h-24 md:h-32 mx-auto mb-4"
+            className="h-36 md:h-48 mx-auto mb-4"
           />
           
           {/* Quick Action Buttons */}
