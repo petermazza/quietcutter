@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
-import { writeFile, unlink, readFile } from 'fs/promises';
-import { exec, spawn } from 'child_process';
+import { writeFile, unlink, readFile, mkdir } from 'fs/promises';
+import { exec } from 'child_process';
 import { promisify } from 'util';
-import path from 'path';
+import { existsSync } from 'fs';
 
 const execAsync = promisify(exec);
 
 export async function POST(request) {
   let inputPath = null;
   let outputPath = null;
+  let tempDir = null;
   
   try {
     const formData = await request.formData();
@@ -28,17 +29,18 @@ export async function POST(request) {
     inputPath = `/tmp/input_${timestamp}.mp4`;
     outputPath = `/tmp/output_${timestamp}.mp4`;
     const detectPath = `/tmp/detect_${timestamp}.txt`;
+    tempDir = `/tmp/segments_${timestamp}`;
     
     await writeFile(inputPath, buffer);
     
     // Step 1: Get video duration first (fast)
-    const durationCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${inputPath}`;
+    const durationCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`;
     const { stdout: durationStr } = await execAsync(durationCmd);
     const duration = parseFloat(durationStr.trim());
     
     // Step 2: Detect silence using native FFmpeg
-    const detectCmd = `ffmpeg -i ${inputPath} -af silencedetect=noise=${threshold}dB:d=${minDuration} -f null - 2> ${detectPath}`;
-    await execAsync(detectCmd);
+    const detectCmd = `ffmpeg -i "${inputPath}" -af silencedetect=noise=${threshold}dB:d=${minDuration} -f null - 2> "${detectPath}"`;
+    await execAsync(detectCmd, { maxBuffer: 50 * 1024 * 1024 });
     
     // Step 3: Parse silence timestamps
     const detectOutput = await readFile(detectPath, 'utf-8');
@@ -62,7 +64,7 @@ export async function POST(request) {
     
     if (silenceRanges.length === 0) {
       // No silence found - copy file
-      await execAsync(`cp ${inputPath} ${outputPath}`);
+      await execAsync(`cp "${inputPath}" "${outputPath}"`);
     } else {
       // Step 4: Build non-silent segments
       const segments = [];
@@ -81,34 +83,39 @@ export async function POST(request) {
         segments.push({ start: lastEnd, end: duration });
       }
       
-      // Step 5: Process segments
+      // Step 5: Use segment-based approach with stream copy (FAST!)
       if (segments.length === 0) {
-        await execAsync(`cp ${inputPath} ${outputPath}`);
-      } else if (segments.length === 1) {
-        // Single segment - use ultrafast preset for speed
-        const seg = segments[0];
-        await execAsync(`ffmpeg -ss ${seg.start} -i ${inputPath} -t ${seg.end - seg.start} -c:v libx264 -preset ultrafast -crf 23 -c:a aac -b:a 128k -y ${outputPath}`);
+        await execAsync(`cp "${inputPath}" "${outputPath}"`);
       } else {
-        // OPTIMIZED: Build complex filter for single-pass processing
-        // This is MUCH faster than cutting individual segments
+        // Create temp directory for segments
+        await mkdir(tempDir, { recursive: true });
         
-        // Build select filter for non-silent parts
-        const videoSelects = segments.map(seg => 
-          `between(t,${seg.start.toFixed(3)},${seg.end.toFixed(3)})`
-        ).join('+');
+        // Cut each segment with stream copy (no re-encoding = FAST)
+        const segmentFiles = [];
+        for (let i = 0; i < segments.length; i++) {
+          const seg = segments[i];
+          const segFile = `${tempDir}/seg_${i.toString().padStart(4, '0')}.ts`;
+          segmentFiles.push(segFile);
+          
+          // Use -c copy for speed, output to .ts for lossless concat
+          await execAsync(
+            `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c copy -bsf:v h264_mp4toannexb -f mpegts -y "${segFile}"`,
+            { maxBuffer: 10 * 1024 * 1024 }
+          );
+        }
         
-        const audioSelects = segments.map(seg => 
-          `between(t,${seg.start.toFixed(3)},${seg.end.toFixed(3)})`
-        ).join('+');
-        
-        // Single-pass filter that selects and concatenates non-silent parts
-        const filterComplex = `[0:v]select='${videoSelects}',setpts=N/FRAME_RATE/TB[v];[0:a]aselect='${audioSelects}',asetpts=N/SR/TB[a]`;
-        
-        // Use ultrafast preset for maximum speed
+        // Concat all segments
+        const concatList = segmentFiles.map(f => `"${f}"`).join('|');
         await execAsync(
-          `ffmpeg -i ${inputPath} -filter_complex "${filterComplex}" -map "[v]" -map "[a]" -c:v libx264 -preset ultrafast -crf 23 -c:a aac -b:a 128k -y ${outputPath}`,
-          { maxBuffer: 50 * 1024 * 1024 } // 50MB buffer for large videos
+          `ffmpeg -i "concat:${concatList}" -c copy -bsf:a aac_adtstoasc -y "${outputPath}"`,
+          { maxBuffer: 50 * 1024 * 1024 }
         );
+        
+        // Cleanup segment files
+        for (const f of segmentFiles) {
+          await unlink(f).catch(() => {});
+        }
+        await unlink(tempDir).catch(() => {});
       }
     }
     
@@ -116,7 +123,7 @@ export async function POST(request) {
     const outputBuffer = await readFile(outputPath);
     
     // Get output duration
-    const outputDurationCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${outputPath}`;
+    const outputDurationCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${outputPath}"`;
     const { stdout: outputDurationStr } = await execAsync(outputDurationCmd);
     const outputDuration = parseFloat(outputDurationStr.trim());
     
