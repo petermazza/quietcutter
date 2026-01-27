@@ -482,19 +482,29 @@ export default function VideoSilenceRemover() {
       const processedDuration = parseFloat(response.headers.get('X-Processed-Duration') || '0')
       const removedDuration = parseFloat(response.headers.get('X-Removed-Duration') || '0')
       
+      console.log('Processing complete:', { originalDuration, processedDuration, removedDuration })
+      
       // Get video blob
       const blob = await response.blob()
+      console.log('Blob received:', blob.size, 'bytes')
+      
+      if (blob.size === 0) {
+        throw new Error('Received empty video file from server')
+      }
+      
       const url = URL.createObjectURL(blob)
       setProcessedVideoUrl(url)
       
-      // Calculate processing stats
+      // Calculate processing stats (handle edge cases)
       const processingTime = (Date.now() - processingStartTime.current) / 1000
-      const reductionPercent = ((removedDuration / originalDuration) * 100).toFixed(1)
+      const reductionPercent = originalDuration > 0 
+        ? ((removedDuration / originalDuration) * 100).toFixed(1) 
+        : '0'
       
       setProcessingStats({
-        originalDuration,
-        processedDuration,
-        removedDuration,
+        originalDuration: originalDuration || 0,
+        processedDuration: processedDuration || 0,
+        removedDuration: removedDuration || 0,
         processingTime,
         reductionPercent,
         originalSize: videoMetadata?.size || 0,
@@ -503,8 +513,8 @@ export default function VideoSilenceRemover() {
       
       // Save to history and last used settings
       addToHistory(videoFile.name, {
-        originalDuration,
-        processedDuration,
+        originalDuration: originalDuration || 0,
+        processedDuration: processedDuration || 0,
         reductionPercent
       }, {
         threshold,
@@ -520,7 +530,10 @@ export default function VideoSilenceRemover() {
       
       setProgress(100)
       setCurrentStep('Complete')
-      setStatusMessage(`Complete! Removed ${removedDuration.toFixed(1)}s of silence (${reductionPercent}% reduction). Video shortened from ${originalDuration.toFixed(1)}s to ${processedDuration.toFixed(1)}s.`)
+      const message = removedDuration > 0 
+        ? `Complete! Removed ${removedDuration.toFixed(1)}s of silence (${reductionPercent}% reduction). Video shortened from ${originalDuration.toFixed(1)}s to ${processedDuration.toFixed(1)}s.`
+        : `Complete! No significant silence detected. Video is ready for download.`
+      setStatusMessage(message)
       setEstimatedTimeRemaining(null)
       
     } catch (error) {
