@@ -26,6 +26,7 @@ function generateLicenseKey() {
 
 export async function POST(request) {
   try {
+    const stripe = getStripe();
     const { planType } = await request.json();
     
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
