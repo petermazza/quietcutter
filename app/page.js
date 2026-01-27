@@ -784,6 +784,29 @@ export default function VideoSilenceRemover() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       <div className="container mx-auto px-4 py-4 md:py-8 max-w-5xl">
+        {/* Plan Badge & Upgrade */}
+        <div className="flex justify-end mb-2">
+          {isPro ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600 rounded-full text-sm font-medium">
+              <Crown className="w-4 h-4" />
+              PRO Lifetime
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-slate-400">
+                {getRemainingVideos()}/{planLimits.videosPerDay} videos today
+              </div>
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-full text-sm font-medium transition-all"
+              >
+                <Zap className="w-4 h-4" />
+                Upgrade to Pro
+              </button>
+            </div>
+          )}
+        </div>
+        
         {/* Header */}
         <div className="text-center mb-6 md:mb-8">
           <div className="flex items-center justify-center gap-2 md:gap-3 mb-3 md:mb-4">
@@ -800,7 +823,7 @@ export default function VideoSilenceRemover() {
           </p>
           
           {/* Quick Action Buttons */}
-          <div className="flex items-center justify-center gap-2 mt-4">
+          <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
             <button
               onClick={() => { setShowHistory(!showHistory); setShowSavedSettings(false); }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${
@@ -812,7 +835,7 @@ export default function VideoSilenceRemover() {
               <History className="w-4 h-4" />
               History
               {processingHistory.length > 0 && (
-                <span className="bg-slate-700 text-xs px-1.5 rounded-full">{processingHistory.length}</span>
+                <span className="bg-slate-700 text-xs px-1.5 rounded-full">{processingHistory.length}/{planLimits.maxHistoryItems}</span>
               )}
             </button>
             <button
@@ -826,7 +849,9 @@ export default function VideoSilenceRemover() {
               <Star className="w-4 h-4" />
               Saved
               {savedSettings.length > 0 && (
-                <span className="bg-slate-700 text-xs px-1.5 rounded-full">{savedSettings.length}</span>
+                <span className="bg-slate-700 text-xs px-1.5 rounded-full">
+                  {savedSettings.length}/{planLimits.maxSavedSettings === Infinity ? '∞' : planLimits.maxSavedSettings}
+                </span>
               )}
             </button>
             {lastUsedSettings && (
@@ -837,6 +862,15 @@ export default function VideoSilenceRemover() {
               >
                 <RotateCcw className="w-4 h-4" />
                 Last Settings
+              </button>
+            )}
+            {isPro && (
+              <button
+                onClick={exportSettings}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-purple-900/30 border border-purple-700/50 text-purple-400 hover:bg-purple-900/50"
+              >
+                <Download className="w-4 h-4" />
+                Export Settings
               </button>
             )}
           </div>
