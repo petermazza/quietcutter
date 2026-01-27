@@ -276,9 +276,9 @@ export default function VideoSilenceRemover() {
   
   // Save current settings as favorite
   const saveCurrentSettings = () => {
-    // Check plan limit
+    // Check shared limit
     if (savedSettings.length >= SHARED_LIMITS.maxSavedSettings) {
-      setShowUpgradeModal(true)
+      alert(`Maximum ${SHARED_LIMITS.maxSavedSettings} saved settings allowed. Delete one to add a new one.`)
       return
     }
     
