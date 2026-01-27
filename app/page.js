@@ -6,7 +6,29 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
 import { Progress } from './components/ui/progress'
-import { Upload, Download, Play, Loader2, Video, FileVideo, History, Settings, Clock, Star, Trash2, RotateCcw } from 'lucide-react'
+import { Upload, Download, Play, Loader2, Video, FileVideo, History, Settings, Clock, Star, Trash2, RotateCcw, Crown, Lock, X, Check, Zap, CreditCard } from 'lucide-react'
+
+// Plan limits
+const PLAN_LIMITS = {
+  free: {
+    videosPerDay: 3,
+    maxDurationMinutes: 10,
+    maxSavedSettings: 3,
+    maxHistoryItems: 3,
+    hasPriorityQueue: false,
+    hasBatchProcessing: false,
+    hasExportSettings: false,
+  },
+  pro: {
+    videosPerDay: Infinity,
+    maxDurationMinutes: 120,
+    maxSavedSettings: Infinity,
+    maxHistoryItems: 50,
+    hasPriorityQueue: true,
+    hasBatchProcessing: true,
+    hasExportSettings: true,
+  }
+}
 
 export default function VideoSilenceRemover() {
   const [loaded, setLoaded] = useState(false)
@@ -35,11 +57,24 @@ export default function VideoSilenceRemover() {
   const [showSavedSettings, setShowSavedSettings] = useState(false)
   const [lastUsedSettings, setLastUsedSettings] = useState(null)
   
+  // Freemium state
+  const [userTier, setUserTier] = useState('free') // 'free' or 'pro'
+  const [dailyUsage, setDailyUsage] = useState({ date: '', count: 0 })
+  const [licenseKey, setLicenseKey] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showLicenseModal, setShowLicenseModal] = useState(false)
+  const [licenseKeyInput, setLicenseKeyInput] = useState('')
+  const [licenseError, setLicenseError] = useState('')
+  
   const ffmpegRef = useRef(null)
   const videoPreviewRef = useRef(null)
   const fileInputRef = useRef(null)
   const processingStartTime = useRef(null)
   const processedVideoRef = useRef(null)
+  
+  // Get current plan limits
+  const planLimits = PLAN_LIMITS[userTier]
+  const isPro = userTier === 'pro'
   
   // Preset configurations
   const presets = {
@@ -57,6 +92,103 @@ export default function VideoSilenceRemover() {
     setMinSilenceDuration(preset.duration)
     setActivePreset(presetName)
   }
+  
+  // Check if daily limit reached
+  const isDailyLimitReached = () => {
+    const today = new Date().toDateString()
+    if (dailyUsage.date !== today) return false
+    return dailyUsage.count >= planLimits.videosPerDay
+  }
+  
+  // Get remaining videos today
+  const getRemainingVideos = () => {
+    const today = new Date().toDateString()
+    if (dailyUsage.date !== today) return planLimits.videosPerDay
+    return Math.max(0, planLimits.videosPerDay - dailyUsage.count)
+  }
+  
+  // Increment daily usage
+  const incrementDailyUsage = () => {
+    const today = new Date().toDateString()
+    let newUsage
+    if (dailyUsage.date !== today) {
+      newUsage = { date: today, count: 1 }
+    } else {
+      newUsage = { date: today, count: dailyUsage.count + 1 }
+    }
+    setDailyUsage(newUsage)
+    localStorage.setItem('silenceRemover_dailyUsage', JSON.stringify(newUsage))
+  }
+  
+  // Check video duration limit
+  const isVideoDurationAllowed = (durationSeconds) => {
+    const durationMinutes = durationSeconds / 60
+    return durationMinutes <= planLimits.maxDurationMinutes
+  }
+  
+  // Validate license key (simple format: LIFE-XXXX-XXXX-XXXX)
+  const validateLicenseKey = (key) => {
+    // Simple validation - in production, you'd verify against a server
+    const pattern = /^LIFE-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/
+    return pattern.test(key.toUpperCase())
+  }
+  
+  // Activate license key
+  const activateLicenseKey = () => {
+    const key = licenseKeyInput.trim().toUpperCase()
+    if (validateLicenseKey(key)) {
+      setLicenseKey(key)
+      setUserTier('pro')
+      setLicenseError('')
+      setShowLicenseModal(false)
+      localStorage.setItem('silenceRemover_licenseKey', key)
+      localStorage.setItem('silenceRemover_userTier', 'pro')
+    } else {
+      setLicenseError('Invalid license key format. Should be: LIFE-XXXX-XXXX-XXXX')
+    }
+  }
+  
+  // Export settings
+  const exportSettings = () => {
+    if (!isPro) {
+      setShowUpgradeModal(true)
+      return
+    }
+    const exportData = {
+      savedSettings,
+      exportDate: new Date().toISOString(),
+      version: '1.0'
+    }
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'silence-remover-settings.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  
+  // Load user tier and usage from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTier = localStorage.getItem('silenceRemover_userTier')
+      const savedKey = localStorage.getItem('silenceRemover_licenseKey')
+      const savedUsage = localStorage.getItem('silenceRemover_dailyUsage')
+      
+      if (savedTier === 'pro' && savedKey && validateLicenseKey(savedKey)) {
+        setUserTier('pro')
+        setLicenseKey(savedKey)
+      }
+      
+      if (savedUsage) {
+        try {
+          setDailyUsage(JSON.parse(savedUsage))
+        } catch (e) {
+          console.error('Failed to load daily usage')
+        }
+      }
+    }
+  }, [])
   
   // Load history and settings from localStorage
   useEffect(() => {
