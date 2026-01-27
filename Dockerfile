@@ -25,8 +25,12 @@ RUN cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
 # Set working directory to standalone
 WORKDIR /app/.next/standalone
 
-# Expose port
-EXPOSE 3000
+# Set environment variables for Next.js standalone
+ENV PORT=8080
+ENV HOSTNAME="0.0.0.0"
+
+# Expose port (Railway uses 8080)
+EXPOSE 8080
 
 # Start the standalone server
 CMD ["node", "server.js"]
