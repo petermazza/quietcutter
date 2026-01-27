@@ -262,7 +262,7 @@ export default function VideoSilenceRemover() {
     }
     
     // Respect plan limits for history
-    const maxItems = planLimits.maxHistoryItems
+    const maxItems = SHARED_LIMITS.maxHistoryItems
     const newHistory = [historyItem, ...processingHistory].slice(0, maxItems)
     setProcessingHistory(newHistory)
     saveHistoryToStorage(newHistory)
