@@ -1571,10 +1571,11 @@ export default function VideoSilenceRemover() {
                 <div className="text-sm text-slate-400 mb-1">Monthly</div>
                 <div className="text-2xl font-bold text-slate-100 mb-3">$9<span className="text-sm font-normal text-slate-400">/mo</span></div>
                 <button 
-                  className="w-full py-2 px-4 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-all"
-                  onClick={() => alert('Stripe integration coming soon! For now, contact us for access.')}
+                  className="w-full py-2 px-4 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-all disabled:opacity-50"
+                  onClick={() => handleCheckout('monthly')}
+                  disabled={checkoutLoading}
                 >
-                  Subscribe
+                  {checkoutLoading ? 'Loading...' : 'Subscribe'}
                 </button>
               </div>
               
@@ -1587,10 +1588,11 @@ export default function VideoSilenceRemover() {
                 <div className="text-2xl font-bold text-slate-100 mb-1">$49</div>
                 <div className="text-xs text-slate-400 mb-3">One-time payment</div>
                 <button 
-                  className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg text-sm font-medium transition-all"
-                  onClick={() => alert('Stripe integration coming soon! For now, contact us for access.')}
+                  className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                  onClick={() => handleCheckout('lifetime')}
+                  disabled={checkoutLoading}
                 >
-                  Buy Lifetime
+                  {checkoutLoading ? 'Loading...' : 'Buy Lifetime'}
                 </button>
               </div>
             </div>
