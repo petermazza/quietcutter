@@ -549,6 +549,19 @@ export default function VideoSilenceRemover() {
   const processVideo = async () => {
     if (!videoFile || !loaded) return
     
+    // Check plan limits
+    if (isDailyLimitReached()) {
+      setShowUpgradeModal(true)
+      return
+    }
+    
+    const videoDurationMinutes = (videoMetadata?.duration || 0) / 60
+    if (videoDurationMinutes > planLimits.maxDurationMinutes) {
+      setStatusMessage(`Video too long (${videoDurationMinutes.toFixed(1)} min). Free plan allows up to ${planLimits.maxDurationMinutes} min.`)
+      setShowUpgradeModal(true)
+      return
+    }
+    
     setProcessing(true)
     setProgress(0)
     setCurrentStep('Uploading')
