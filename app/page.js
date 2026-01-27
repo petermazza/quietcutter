@@ -828,19 +828,11 @@ export default function VideoSilenceRemover() {
         
         {/* Header */}
         <div className="text-center mb-6 md:mb-8">
-          <div className="flex items-center justify-center gap-3 mb-3 md:mb-4">
-            <img 
-              src="/quietcutter-logo.png" 
-              alt="QuietCutter Logo" 
-              className="w-12 h-12 md:w-16 md:h-16 rounded-xl"
-            />
-            <div className="text-left">
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-                QuietCutter
-              </h1>
-              <p className="text-slate-400 text-sm md:text-base">Make every second count.</p>
-            </div>
-          </div>
+          <img 
+            src="/quietcutter-logo.png" 
+            alt="QuietCutter - Make every second count" 
+            className="h-24 md:h-32 mx-auto mb-4"
+          />
           
           {/* Quick Action Buttons */}
           <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
