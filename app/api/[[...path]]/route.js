@@ -71,14 +71,11 @@ async function handleRoute(request, { params }) {
     // Status endpoints - GET /api/status
     if (route === '/status' && method === 'GET') {
       const statusChecks = await db.collection('status_checks')
-        .find({})
+        .find({}, { projection: { _id: 0 } })
         .limit(1000)
         .toArray()
-
-      // Remove MongoDB's _id field from response
-      const cleanedStatusChecks = statusChecks.map(({ _id, ...rest }) => rest)
       
-      return handleCORS(NextResponse.json(cleanedStatusChecks))
+      return handleCORS(NextResponse.json(statusChecks))
     }
 
     // Route not found
