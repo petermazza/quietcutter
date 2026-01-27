@@ -524,6 +524,9 @@ export default function VideoSilenceRemover() {
       setEstimatedTimeRemaining(null)
       
     } catch (error) {
+      // Stop progress animation on error
+      if (progressInterval) clearInterval(progressInterval)
+      
       console.error('Error processing video:', error)
       
       // Provide user-friendly error messages
