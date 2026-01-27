@@ -1,174 +1,68 @@
-# Video Silence Remover
+# QuietCutter
 
-A robust, single-page **Client-Side Video Silence Remover** built with Next.js 14 (App Router), FFmpeg.wasm, and Tailwind CSS.
+Video silence remover - Make every second count.
 
 ## Features
+- Remove silent segments from videos
+- Fast server-side processing with FFmpeg
+- Smart presets for different content types
+- Freemium model with Stripe payments
 
-- 🎬 **Client-Side Processing**: All video processing happens in your browser using WebAssembly
-- 🔇 **Silence Detection**: Automatically detect and remove silent segments from videos
-- ⚙️ **Adjustable Threshold**: Configure silence detection threshold (-60dB to -10dB)
-- 📁 **Drag & Drop Upload**: Easy video file upload via drag and drop or file picker
-- 📊 **Real-Time Progress**: Live progress tracking during video processing
-- 💾 **Download Processed Video**: Save the processed video directly to your device
-- 🎨 **Beautiful UI**: Modern dark mode interface with Tailwind CSS and shadcn/ui components
-- 🔒 **Privacy First**: No data is uploaded to any server - everything runs locally
+## Deployment to Railway
 
-## Tech Stack
+### Prerequisites
+- Railway account (https://railway.app)
+- GitHub account
+- Stripe account (for payments)
 
-- **Framework**: Next.js 14 (App Router)
-- **Styling**: Tailwind CSS with zinc/slate dark mode colors
-- **UI Components**: shadcn/ui
-- **Video Processing**: FFmpeg.wasm (@ffmpeg/ffmpeg v0.12.10)
-- **Icons**: Lucide React
+### Steps
 
-## How to Access
+1. **Push to GitHub**
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/YOUR_USERNAME/quietcutter.git
+   git push -u origin main
+   ```
 
-**Public URL**: [https://vidsilence.preview.emergentagent.com](https://vidsilence.preview.emergentagent.com)
+2. **Deploy to Railway**
+   - Go to https://railway.app
+   - Click "New Project"
+   - Select "Deploy from GitHub repo"
+   - Choose your quietcutter repository
+   - Railway will auto-detect the Dockerfile
 
-**Local Development**: [http://localhost:3000](http://localhost:3000)
+3. **Add Environment Variables**
+   In Railway dashboard, add these variables:
+   ```
+   NEXT_PUBLIC_BASE_URL=https://your-app.up.railway.app
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_xxx
+   STRIPE_SECRET_KEY=sk_live_xxx
+   ```
 
-### Important for Safari Users
+4. **Custom Domain (Optional)**
+   - In Railway, go to Settings → Domains
+   - Add your custom domain (e.g., quietcutter.com)
+   - Update DNS records as instructed
 
-If you're experiencing connection issues in Safari, this is due to the strict security headers required for FFmpeg.wasm:
+## Environment Variables
 
-**Recommended Browsers**:
-- ✅ Chrome 92+ (Best performance)
-- ✅ Edge 92+ (Best performance)
-- ✅ Firefox 95+
-- ⚠️ Safari 16.4+ (Limited support due to WebAssembly restrictions)
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_BASE_URL` | Your app's URL (for Stripe redirects) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `STRIPE_SECRET_KEY` | Stripe secret key |
 
-**If Safari won't connect**:
-1. Use Chrome, Edge, or Firefox instead
-2. These browsers have better WebAssembly and SharedArrayBuffer support
-3. All modern features work seamlessly in Chromium-based browsers
+## Local Development
 
-## Prerequisites
-
-- Node.js 18+ or Yarn 1.22+
-- Modern web browser with WebAssembly support
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd video-silence-remover
-```
-
-2. Install dependencies:
 ```bash
 yarn install
-```
-
-3. Run the development server:
-```bash
 yarn dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## How It Works
-
-1. **Upload a Video**: Drag and drop a video file (MP4, AVI, MOV, MKV) or click to browse
-2. **Adjust Threshold**: Set the silence detection threshold (default: -30dB)
-3. **Process**: Click "Remove Silence" to analyze and remove silent segments
-4. **Download**: Download the processed video when complete
-
-## Technical Details
-
-### Silence Removal Algorithm
-
-The application uses FFmpeg's `silenceremove` filter with the following parameters:
-- `stop_periods=-1`: Remove all silent periods
-- `stop_duration=0.5`: Consider segments longer than 0.5s as silence
-- `stop_threshold=-30dB`: Volume threshold for silence detection
-
-### Security Headers
-
-The application requires specific CORS headers for FFmpeg.wasm to function:
-- `Cross-Origin-Opener-Policy: same-origin`
-- `Cross-Origin-Embedder-Policy: require-corp`
-- `Cross-Origin-Resource-Policy: cross-origin`
-
-These are configured in `next.config.js`.
-
-### FFmpeg Core
-
-The application uses FFmpeg.wasm with the single-threaded core for better compatibility:
-- Core URL: `https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd`
-
-## File Structure
-
-```
-/app
-├── app/
-│   ├── page.js              # Main video processor component
-│   ├── layout.js            # Root layout with metadata
-│   ├── globals.css          # Global styles
-│   └── components/ui/       # shadcn/ui components
-├── next.config.js           # Next.js configuration with security headers
-├── package.json             # Dependencies
-└── README.md               # This file
-```
-
-## Supported Video Formats
-
-- MP4
-- AVI
-- MOV
-- MKV
-- And other formats supported by FFmpeg
-
-## Browser Compatibility
-
-- Chrome/Edge 92+
-- Firefox 95+
-- Safari 16.4+
-- Any modern browser with WebAssembly and SharedArrayBuffer support
-
-## Performance Notes
-
-- Processing time depends on video length and your device's performance
-- Longer videos may take several minutes to process
-- All processing is done locally - no server upload required
-- The application shows real-time progress during processing
-
-## Troubleshooting
-
-### FFmpeg fails to load
-- Ensure you're using a modern browser with WebAssembly support
-- Check browser console for specific error messages
-- Try clearing browser cache and reloading
-
-### Processing fails
-- Ensure the video file is a supported format
-- Try a smaller video file first
-- Check that your browser isn't blocking cross-origin requests
-
-## Development
-
-### Build for Production
-```bash
-yarn build
-yarn start
-```
-
-### Key Dependencies
-- `@ffmpeg/ffmpeg@^0.12.10` - FFmpeg WebAssembly port
-- `@ffmpeg/util@^0.12.1` - Utility functions for FFmpeg.wasm
-- `next@14.2.3` - Next.js framework
-- `lucide-react` - Icon library
-
-## License
-
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Acknowledgments
-
-- FFmpeg.wasm team for the amazing WebAssembly port
-- shadcn/ui for the beautiful component library
-- Next.js team for the excellent framework
+## Tech Stack
+- Next.js 14 (App Router)
+- FFmpeg (server-side video processing)
+- Stripe (payments)
+- Tailwind CSS
