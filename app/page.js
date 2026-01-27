@@ -6,28 +6,25 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
 import { Progress } from './components/ui/progress'
-import { Upload, Download, Play, Loader2, Video, FileVideo, History, Settings, Clock, Star, Trash2, RotateCcw, Crown, Lock, X, Check, Zap, CreditCard } from 'lucide-react'
+import { Upload, Download, Play, Loader2, Video, FileVideo, History, Clock, Star, Trash2, RotateCcw, Crown, X, Check, Zap, CreditCard } from 'lucide-react'
 
-// Plan limits
+// Plan limits - simplified to focus on real value
 const PLAN_LIMITS = {
   free: {
     videosPerDay: 3,
     maxDurationMinutes: 10,
-    maxSavedSettings: 3,
-    maxHistoryItems: 3,
-    hasPriorityQueue: false,
-    hasBatchProcessing: false,
-    hasExportSettings: false,
   },
   pro: {
     videosPerDay: Infinity,
     maxDurationMinutes: 120,
-    maxSavedSettings: Infinity,
-    maxHistoryItems: 50,
-    hasPriorityQueue: true,
-    hasBatchProcessing: true,
-    hasExportSettings: true,
   }
+}
+
+// Shared limits (same for everyone)
+const SHARED_LIMITS = {
+  maxSavedSettings: 5,
+  maxHistoryItems: 10,
+}
 }
 
 export default function VideoSilenceRemover() {
