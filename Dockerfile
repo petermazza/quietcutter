@@ -8,10 +8,10 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
+COPY package.json yarn.lock ./
 
 # Install dependencies
-RUN yarn install
+RUN yarn install --frozen-lockfile
 
 # Copy app source
 COPY . .
@@ -19,8 +19,14 @@ COPY . .
 # Build the app
 RUN yarn build
 
+# Copy public folder and static assets to standalone
+RUN cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
+
+# Set working directory to standalone
+WORKDIR /app/.next/standalone
+
 # Expose port
 EXPOSE 3000
 
-# Start the app
-CMD ["yarn", "start"]
+# Start the standalone server
+CMD ["node", "server.js"]
