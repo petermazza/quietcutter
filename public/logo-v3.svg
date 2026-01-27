@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Gradient background -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="200" height="200" rx="44" fill="url(#bgGrad)"/>
+  
+  <!-- Stylized "Q" made of sound wave -->
+  <g fill="none" stroke="white" stroke-width="12" stroke-linecap="round">
+    <!-- Circle part of Q -->
+    <circle cx="95" cy="90" r="45" opacity="0.95"/>
+    <!-- Tail of Q (diagonal cut) -->
+    <line x1="125" y1="120" x2="160" y2="165" opacity="0.95"/>
+  </g>
+  
+  <!-- Sound wave marks inside -->
+  <g fill="none" stroke="white" stroke-width="4" stroke-linecap="round" opacity="0.6">
+    <line x1="80" y1="75" x2="80" y2="105"/>
+    <line x1="95" y1="65" x2="95" y2="115"/>
+    <line x1="110" y1="75" x2="110" y2="105"/>
+  </g>
+</svg>
