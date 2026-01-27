@@ -828,18 +828,19 @@ export default function VideoSilenceRemover() {
         
         {/* Header */}
         <div className="text-center mb-6 md:mb-8">
-          <div className="flex items-center justify-center gap-2 md:gap-3 mb-3 md:mb-4">
-            <Video className="w-8 h-8 md:w-10 md:h-10 text-blue-500" />
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Video Silence Remover
-            </h1>
+          <div className="flex items-center justify-center gap-3 mb-3 md:mb-4">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_vidsilence/artifacts/r1abjepv_Gemini_Generated_Image_ycesd7ycesd7yces.png" 
+              alt="QuietCutter Logo" 
+              className="w-12 h-12 md:w-16 md:h-16 rounded-xl"
+            />
+            <div className="text-left">
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+                QuietCutter
+              </h1>
+              <p className="text-slate-400 text-sm md:text-base">Make every second count.</p>
+            </div>
           </div>
-          <p className="text-slate-400 text-base md:text-lg px-4">
-            Remove silent segments and actually shorten your videos
-          </p>
-          <p className="text-slate-500 text-xs md:text-sm mt-2 px-4">
-            Server-side processing • Videos actually shortened • Fast & reliable • Silence detected and cut out
-          </p>
           
           {/* Quick Action Buttons */}
           <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
