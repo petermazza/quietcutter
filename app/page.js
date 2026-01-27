@@ -1274,13 +1274,17 @@ export default function VideoSilenceRemover() {
                 <div className="bg-slate-900/50 p-3 rounded-lg">
                   <div className="text-xs text-slate-500 mb-1">Duration</div>
                   <div className="text-lg font-semibold text-slate-200">
-                    {Math.floor(videoMetadata.duration / 60)}:{String(Math.floor(videoMetadata.duration % 60)).padStart(2, '0')}
+                    {videoMetadata.duration > 0 
+                      ? `${Math.floor(videoMetadata.duration / 60)}:${String(Math.floor(videoMetadata.duration % 60)).padStart(2, '0')}`
+                      : 'Loading...'}
                   </div>
                 </div>
                 <div className="bg-slate-900/50 p-3 rounded-lg">
                   <div className="text-xs text-slate-500 mb-1">Resolution</div>
                   <div className="text-lg font-semibold text-slate-200">
-                    {videoMetadata.width}x{videoMetadata.height}
+                    {videoMetadata.width > 0 && videoMetadata.height > 0
+                      ? `${videoMetadata.width}x${videoMetadata.height}`
+                      : 'Loading...'}
                   </div>
                 </div>
                 <div className="bg-slate-900/50 p-3 rounded-lg">
@@ -1292,7 +1296,7 @@ export default function VideoSilenceRemover() {
                 <div className="bg-slate-900/50 p-3 rounded-lg">
                   <div className="text-xs text-slate-500 mb-1">Format</div>
                   <div className="text-lg font-semibold text-slate-200">
-                    {videoMetadata.type.split('/')[1].toUpperCase()}
+                    {videoMetadata.type ? videoMetadata.type.split('/')[1]?.toUpperCase() || 'VIDEO' : 'VIDEO'}
                   </div>
                 </div>
               </div>
