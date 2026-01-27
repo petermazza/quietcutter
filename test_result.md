@@ -101,3 +101,128 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: |
+  Build a Video Silence Remover called "QuietCutter" using Next.js 14+ and server-side FFmpeg.
+  Core features: video upload, silence detection/removal, progress tracking, download.
+  Freemium model with Stripe integration for Pro tier.
+  Deploy on Railway with native FFmpeg support.
+
+backend:
+  - task: "Video Processing API with Security"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/process-video/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added comprehensive security: rate limiting (5 req/min), magic bytes validation for video files, sanitized FFmpeg parameters, secure file cleanup, security headers. Note: FFmpeg not installed locally so actual processing cannot be tested."
+
+  - task: "Stripe Checkout API with Security"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/stripe/create-checkout/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added security: rate limiting (10 req/min), input validation with whitelist for planType, URL validation for baseUrl, crypto-quality license key generation, session expiration (30 min). Requires STRIPE_SECRET_KEY to test."
+
+  - task: "Security Headers Configuration"
+    implemented: true
+    working: true
+    file: "/app/next.config.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Verified all security headers are active: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy, Content-Security-Policy. Tested with curl -I."
+
+  - task: "Security Utilities Library"
+    implemented: true
+    working: "NA"
+    file: "/app/lib/security.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created security utilities: rateLimit(), validateVideoFile(), sanitizeFilename(), sanitizeNumeric(), sanitizeThreshold(), sanitizeDuration(), getClientIP(), FILE_LIMITS, SECURITY_HEADERS, secureJsonResponse()"
+
+frontend:
+  - task: "Main UI Page"
+    implemented: true
+    working: true
+    file: "/app/app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "UI loads correctly with SVG logo, all components render properly."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Video Processing API with Security"
+    - "Stripe Checkout API with Security"
+    - "Security Utilities Library"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      Added comprehensive security hardening to QuietCutter:
+      
+      1. Security Utilities (/app/lib/security.js):
+         - Rate limiting (in-memory store)
+         - Video file validation via magic bytes
+         - Filename sanitization
+         - FFmpeg parameter sanitization
+         - Client IP extraction
+         
+      2. Video Processing API:
+         - 5 requests/minute rate limit
+         - Magic bytes check for video files (MP4, MOV, AVI, MKV)
+         - Sanitized threshold and duration parameters
+         - Secure temp file cleanup with rm -rf
+         - Timeout protection
+         
+      3. Stripe Checkout API:
+         - 10 requests/minute rate limit
+         - Whitelist validation for planType
+         - URL validation for redirects
+         - Crypto-quality license key generation
+         - 30-minute session expiration
+         
+      4. Global Security Headers (next.config.js):
+         - X-Content-Type-Options: nosniff
+         - X-Frame-Options: DENY
+         - X-XSS-Protection: 1; mode=block
+         - Referrer-Policy: strict-origin-when-cross-origin
+         - Permissions-Policy (camera, mic, geolocation disabled)
+         - Content-Security-Policy (self + Stripe domains)
+         - Disabled X-Powered-By header
+      
+      IMPORTANT: FFmpeg is NOT installed locally (only in Docker for Railway).
+      Testing should focus on:
+      - Rate limiting logic
+      - Input validation (invalid file types, invalid parameters)
+      - Security header presence
+      - API error handling
