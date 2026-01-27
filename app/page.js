@@ -883,15 +883,6 @@ export default function VideoSilenceRemover() {
                 Last Settings
               </button>
             )}
-            {isPro && (
-              <button
-                onClick={exportSettings}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-purple-900/30 border border-purple-700/50 text-purple-400 hover:bg-purple-900/50"
-              >
-                <Download className="w-4 h-4" />
-                Export Settings
-              </button>
-            )}
           </div>
         </div>
         
