@@ -794,7 +794,7 @@ export default function VideoSilenceRemover() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-slate-800 text-slate-100">
       {/* Hidden video element for metadata extraction */}
       <video 
         ref={metadataVideoRef} 
