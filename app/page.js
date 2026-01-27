@@ -25,14 +25,13 @@ const SHARED_LIMITS = {
 }
 
 export default function VideoSilenceRemover() {
-  const [loaded, setLoaded] = useState(false)
+  const [loaded, setLoaded] = useState(true) // Server-side FFmpeg is always ready
   const [videoFile, setVideoFile] = useState(null)
   const [processing, setProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [processedVideoUrl, setProcessedVideoUrl] = useState('')
   const [duration, setDuration] = useState(0)
   const [dragActive, setDragActive] = useState(false)
-  const [loadingFFmpeg, setLoadingFFmpeg] = useState(false)
   const [statusMessage, setStatusMessage] = useState('Ready to process video')
   const [threshold, setThreshold] = useState(-30)
   const [minSilenceDuration, setMinSilenceDuration] = useState(0.5)
@@ -60,7 +59,6 @@ export default function VideoSilenceRemover() {
   const [licenseKeyInput, setLicenseKeyInput] = useState('')
   const [licenseError, setLicenseError] = useState('')
   
-  const ffmpegRef = useRef(null)
   const videoPreviewRef = useRef(null)
   const metadataVideoRef = useRef(null) // Hidden video element for metadata extraction
   const fileInputRef = useRef(null)
