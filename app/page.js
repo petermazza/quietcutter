@@ -168,6 +168,32 @@ export default function VideoSilenceRemover() {
     URL.revokeObjectURL(url)
   }
   
+  // Handle Stripe checkout
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  
+  const handleCheckout = async (planType) => {
+    setCheckoutLoading(true)
+    try {
+      const response = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planType }),
+      })
+      
+      const data = await response.json()
+      
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error(data.error || 'Failed to create checkout session')
+      }
+    } catch (error) {
+      console.error('Checkout error:', error)
+      alert('Failed to start checkout. Please try again.')
+      setCheckoutLoading(false)
+    }
+  }
+  
   // Load user tier and usage from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
