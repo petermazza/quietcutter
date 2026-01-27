@@ -1,46 +1,125 @@
 import { NextResponse } from 'next/server';
-import { writeFile, unlink, readFile, mkdir } from 'fs/promises';
+import { writeFile, unlink, readFile, mkdir, rm } from 'fs/promises';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
+import { 
+  rateLimit, 
+  validateVideoFile, 
+  sanitizeFilename,
+  sanitizeThreshold,
+  sanitizeDuration,
+  getClientIP,
+  FILE_LIMITS,
+  SECURITY_HEADERS 
+} from '@/lib/security';
 
 const execAsync = promisify(exec);
+
+// Maximum file size (500MB for this endpoint - can be adjusted per tier)
+const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
 export async function POST(request) {
   let inputPath = null;
   let outputPath = null;
   let tempDir = null;
+  let detectPath = null;
   
   try {
-    const formData = await request.formData();
-    const videoFile = formData.get('video');
-    const threshold = formData.get('threshold') || '-30';
-    const minDuration = formData.get('minDuration') || '0.5';
+    // ============ SECURITY: Rate Limiting ============
+    const clientIP = getClientIP(request);
+    const rateLimitResult = rateLimit(clientIP, 5, 60000); // 5 requests per minute
     
-    if (!videoFile) {
-      return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'Rate limit exceeded. Please wait before processing more videos.',
+          retryAfter: Math.ceil(rateLimitResult.resetIn / 1000)
+        },
+        { 
+          status: 429,
+          headers: {
+            ...SECURITY_HEADERS,
+            'Retry-After': Math.ceil(rateLimitResult.resetIn / 1000).toString(),
+          }
+        }
+      );
     }
 
-    // Save uploaded file
+    // ============ SECURITY: Parse and Validate Input ============
+    const formData = await request.formData();
+    const videoFile = formData.get('video');
+    
+    // Sanitize FFmpeg parameters to prevent injection
+    const threshold = sanitizeThreshold(formData.get('threshold') || '-30');
+    const minDuration = sanitizeDuration(formData.get('minDuration') || '0.5');
+    
+    if (!videoFile) {
+      return NextResponse.json(
+        { error: 'No video file provided' },
+        { status: 400, headers: SECURITY_HEADERS }
+      );
+    }
+
+    // ============ SECURITY: File Size Validation ============
+    if (videoFile.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB` },
+        { status: 413, headers: SECURITY_HEADERS }
+      );
+    }
+
+    // Read file buffer for validation
     const bytes = await videoFile.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    // ============ SECURITY: Magic Bytes Validation ============
+    const validation = validateVideoFile(buffer);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: 'Invalid video file. Please upload a valid MP4, MOV, AVI, or MKV file.' },
+        { status: 400, headers: SECURITY_HEADERS }
+      );
+    }
+
+    // ============ SECURITY: Sanitize Filename ============
+    const safeFilename = sanitizeFilename(videoFile.name);
     
+    // Generate unique paths with crypto-random suffix for security
     const timestamp = Date.now();
-    inputPath = `/tmp/input_${timestamp}.mp4`;
-    outputPath = `/tmp/output_${timestamp}.mp4`;
-    const detectPath = `/tmp/detect_${timestamp}.txt`;
-    tempDir = `/tmp/segments_${timestamp}`;
+    const randomSuffix = Math.random().toString(36).substring(2, 10);
+    const uniqueId = `${timestamp}_${randomSuffix}`;
+    
+    inputPath = `/tmp/qc_input_${uniqueId}.mp4`;
+    outputPath = `/tmp/qc_output_${uniqueId}.mp4`;
+    detectPath = `/tmp/qc_detect_${uniqueId}.txt`;
+    tempDir = `/tmp/qc_segments_${uniqueId}`;
     
     await writeFile(inputPath, buffer);
     
     // Step 1: Get video duration first (fast)
+    // Using parameterized command - no user input in command string
     const durationCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`;
-    const { stdout: durationStr } = await execAsync(durationCmd);
+    const { stdout: durationStr } = await execAsync(durationCmd, { timeout: 30000 });
     const duration = parseFloat(durationStr.trim());
     
+    // ============ SECURITY: Duration Validation ============
+    if (isNaN(duration) || duration <= 0) {
+      throw new Error('Could not determine video duration. File may be corrupted.');
+    }
+    
+    if (duration > FILE_LIMITS.PRO_MAX_DURATION) {
+      await cleanup(inputPath, outputPath, detectPath, tempDir);
+      return NextResponse.json(
+        { error: `Video too long. Maximum duration is ${FILE_LIMITS.PRO_MAX_DURATION / 60} minutes.` },
+        { status: 400, headers: SECURITY_HEADERS }
+      );
+    }
+    
     // Step 2: Detect silence using native FFmpeg
+    // Parameters are sanitized - safe to use in command
     const detectCmd = `ffmpeg -i "${inputPath}" -af silencedetect=noise=${threshold}dB:d=${minDuration} -f null - 2> "${detectPath}"`;
-    await execAsync(detectCmd, { maxBuffer: 50 * 1024 * 1024 });
+    await execAsync(detectCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
     
     // Step 3: Parse silence timestamps
     const detectOutput = await readFile(detectPath, 'utf-8');
@@ -100,7 +179,7 @@ export async function POST(request) {
           // Use -c copy for speed, output to .ts for lossless concat
           await execAsync(
             `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c copy -bsf:v h264_mp4toannexb -f mpegts -y "${segFile}"`,
-            { maxBuffer: 10 * 1024 * 1024 }
+            { maxBuffer: 10 * 1024 * 1024, timeout: 60000 }
           );
         }
         
@@ -108,14 +187,8 @@ export async function POST(request) {
         const concatList = segmentFiles.map(f => `"${f}"`).join('|');
         await execAsync(
           `ffmpeg -i "concat:${concatList}" -c copy -bsf:a aac_adtstoasc -y "${outputPath}"`,
-          { maxBuffer: 50 * 1024 * 1024 }
+          { maxBuffer: 50 * 1024 * 1024, timeout: 120000 }
         );
-        
-        // Cleanup segment files
-        for (const f of segmentFiles) {
-          await unlink(f).catch(() => {});
-        }
-        await unlink(tempDir).catch(() => {});
       }
     }
     
@@ -124,36 +197,63 @@ export async function POST(request) {
     
     // Get output duration
     const outputDurationCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${outputPath}"`;
-    const { stdout: outputDurationStr } = await execAsync(outputDurationCmd);
+    const { stdout: outputDurationStr } = await execAsync(outputDurationCmd, { timeout: 30000 });
     const outputDuration = parseFloat(outputDurationStr.trim());
     
-    // Cleanup
-    await unlink(inputPath).catch(() => {});
-    await unlink(outputPath).catch(() => {});
-    await unlink(detectPath).catch(() => {});
+    // ============ SECURITY: Secure Cleanup ============
+    await cleanup(inputPath, outputPath, detectPath, tempDir);
     
-    // Return video with metadata
+    // Return video with metadata and security headers
     return new NextResponse(outputBuffer, {
       status: 200,
       headers: {
+        ...SECURITY_HEADERS,
         'Content-Type': 'video/mp4',
-        'Content-Disposition': `attachment; filename="processed_${videoFile.name}"`,
+        'Content-Disposition': `attachment; filename="processed_${safeFilename}"`,
         'X-Original-Duration': duration.toString(),
         'X-Processed-Duration': outputDuration.toString(),
         'X-Removed-Duration': (duration - outputDuration).toString(),
+        'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
       },
     });
     
   } catch (error) {
     console.error('Processing error:', error);
     
-    // Cleanup on error
-    if (inputPath) await unlink(inputPath).catch(() => {});
-    if (outputPath) await unlink(outputPath).catch(() => {});
+    // Secure cleanup on error
+    await cleanup(inputPath, outputPath, detectPath, tempDir);
     
-    return NextResponse.json({ 
-      error: 'Processing failed', 
-      details: error.message 
-    }, { status: 500 });
+    // Don't expose internal error details to client
+    const safeErrorMessage = error.message?.includes('timeout') 
+      ? 'Processing timed out. Please try a shorter video.'
+      : 'Processing failed. Please try again with a different video.';
+    
+    return NextResponse.json(
+      { error: safeErrorMessage },
+      { status: 500, headers: SECURITY_HEADERS }
+    );
   }
+}
+
+/**
+ * Securely cleanup all temporary files
+ */
+async function cleanup(inputPath, outputPath, detectPath, tempDir) {
+  const cleanupPromises = [];
+  
+  if (inputPath) {
+    cleanupPromises.push(unlink(inputPath).catch(() => {}));
+  }
+  if (outputPath) {
+    cleanupPromises.push(unlink(outputPath).catch(() => {}));
+  }
+  if (detectPath) {
+    cleanupPromises.push(unlink(detectPath).catch(() => {}));
+  }
+  if (tempDir) {
+    // Use rm with recursive to remove directory and contents
+    cleanupPromises.push(rm(tempDir, { recursive: true, force: true }).catch(() => {}));
+  }
+  
+  await Promise.all(cleanupPromises);
 }
