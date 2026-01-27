@@ -819,6 +819,13 @@ export default function VideoSilenceRemover() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+      {/* Hidden video element for metadata extraction */}
+      <video 
+        ref={metadataVideoRef} 
+        style={{ display: 'none' }} 
+        preload="metadata"
+      />
+      
       <div className="container mx-auto px-4 py-4 md:py-8 max-w-5xl">
         {/* Plan Badge & Upgrade */}
         <div className="flex justify-end mb-2">
