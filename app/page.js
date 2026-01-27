@@ -1610,31 +1610,21 @@ export default function VideoSilenceRemover() {
             
             {/* Features Comparison */}
             <div className="bg-slate-900/30 rounded-lg p-4 mb-6">
-              <div className="text-sm font-medium text-slate-300 mb-3">Pro Features:</div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Check className="w-4 h-4 text-green-500" />
-                  Unlimited videos/day
+              <div className="text-sm font-medium text-slate-300 mb-3">What you get with Pro:</div>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center gap-3 text-slate-300">
+                  <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium">Unlimited videos per day</span>
+                    <span className="text-slate-500 ml-2">(vs 3/day free)</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Check className="w-4 h-4 text-green-500" />
-                  Up to 2 hour videos
-                </div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Check className="w-4 h-4 text-green-500" />
-                  Unlimited saved settings
-                </div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Check className="w-4 h-4 text-green-500" />
-                  50 items in history
-                </div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Check className="w-4 h-4 text-green-500" />
-                  Priority processing
-                </div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Check className="w-4 h-4 text-green-500" />
-                  Export settings
+                <div className="flex items-center gap-3 text-slate-300">
+                  <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium">Videos up to 2 hours</span>
+                    <span className="text-slate-500 ml-2">(vs 10 min free)</span>
+                  </div>
                 </div>
               </div>
             </div>
