@@ -687,6 +687,9 @@ export default function VideoSilenceRemover() {
         preset: activePreset
       })
       
+      // Increment daily usage on successful processing
+      incrementDailyUsage()
+      
       setProgress(100)
       setCurrentStep('Complete')
       const message = removedDuration > 0 
