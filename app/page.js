@@ -417,40 +417,46 @@ export default function VideoSilenceRemover() {
     
     // Animated progress simulation based on video duration
     const videoDuration = videoMetadata?.duration || 60
-    const estimatedProcessingTime = Math.max(videoDuration * 0.3, 10) // ~0.3s per second of video (optimized)
+    // For longer videos, processing takes longer - estimate ~1s per second of video for full re-encode
+    const estimatedProcessingTime = Math.max(videoDuration * 1.0, 30) 
     let progressInterval = null
     let currentProgress = 5
     
     // Start progress animation
     progressInterval = setInterval(() => {
       const elapsed = (Date.now() - processingStartTime.current) / 1000
-      const expectedProgress = Math.min(95, 5 + (elapsed / estimatedProcessingTime) * 90)
+      // Cap at 90% - the last 10% is for actual download
+      const expectedProgress = Math.min(90, 5 + (elapsed / estimatedProcessingTime) * 85)
       
       // Smoothly update progress
       if (currentProgress < expectedProgress) {
-        currentProgress = Math.min(currentProgress + 2, expectedProgress)
+        currentProgress = Math.min(currentProgress + 1, expectedProgress)
         setProgress(Math.round(currentProgress))
         
         // Update step based on progress
-        if (currentProgress < 15) {
+        if (currentProgress < 10) {
           setCurrentStep('Uploading')
           setStatusMessage('Uploading video to server...')
-        } else if (currentProgress < 40) {
+        } else if (currentProgress < 25) {
           setCurrentStep('Detecting Silence')
           setStatusMessage('Analyzing audio for silent segments...')
-        } else if (currentProgress < 80) {
-          setCurrentStep('Cutting Segments')
-          setStatusMessage('Removing silent parts and re-encoding...')
+        } else if (currentProgress < 85) {
+          setCurrentStep('Processing')
+          const mins = Math.floor(elapsed / 60)
+          const secs = Math.floor(elapsed % 60)
+          setStatusMessage(`Removing silence and re-encoding... (${mins}:${secs.toString().padStart(2, '0')} elapsed)`)
         } else {
           setCurrentStep('Finalizing')
-          setStatusMessage('Almost done...')
+          setStatusMessage('Almost done, finalizing video...')
         }
         
         // Update time remaining
         const remaining = Math.max(0, Math.ceil(estimatedProcessingTime - elapsed))
+        const remMins = Math.floor(remaining / 60)
+        const remSecs = remaining % 60
         setEstimatedTimeRemaining(remaining)
       }
-    }, 500)
+    }, 1000)
     
     try {
       // Prepare form data
