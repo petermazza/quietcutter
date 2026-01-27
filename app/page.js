@@ -1431,13 +1431,24 @@ export default function VideoSilenceRemover() {
                 {/* Original Video */}
                 <div>
                   <div className="text-sm font-medium text-slate-300 mb-2">
-                    Original {videoMetadata && `(${Math.floor(videoMetadata.duration / 60)}:${String(Math.floor(videoMetadata.duration % 60)).padStart(2, '0')})`}
+                    Original {videoMetadata && videoMetadata.duration > 0 && `(${Math.floor(videoMetadata.duration / 60)}:${String(Math.floor(videoMetadata.duration % 60)).padStart(2, '0')})`}
                   </div>
                   <video
                     ref={videoPreviewRef}
                     controls
                     className="w-full rounded-lg bg-black"
                     key={videoFile.name}
+                    onLoadedMetadata={(e) => {
+                      const video = e.target
+                      if (video.duration && video.videoWidth) {
+                        setVideoMetadata(prev => ({
+                          ...prev,
+                          duration: video.duration,
+                          width: video.videoWidth,
+                          height: video.videoHeight
+                        }))
+                      }
+                    }}
                   >
                     <source src={URL.createObjectURL(videoFile)} type="video/mp4" />
                     Your browser does not support the video tag.
