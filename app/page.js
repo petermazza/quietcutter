@@ -258,7 +258,9 @@ export default function VideoSilenceRemover() {
       }
     }
     
-    const newHistory = [historyItem, ...processingHistory].slice(0, 10) // Keep last 10
+    // Respect plan limits for history
+    const maxItems = planLimits.maxHistoryItems
+    const newHistory = [historyItem, ...processingHistory].slice(0, maxItems)
     setProcessingHistory(newHistory)
     saveHistoryToStorage(newHistory)
   }
@@ -271,6 +273,12 @@ export default function VideoSilenceRemover() {
   
   // Save current settings as favorite
   const saveCurrentSettings = () => {
+    // Check plan limit
+    if (savedSettings.length >= planLimits.maxSavedSettings) {
+      setShowUpgradeModal(true)
+      return
+    }
+    
     const settingName = prompt('Name for this preset:', `Custom ${savedSettings.length + 1}`)
     if (!settingName) return
     
