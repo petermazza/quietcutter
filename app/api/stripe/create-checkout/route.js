@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// Initialize Stripe lazily to avoid build-time errors
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY is not configured');
+  }
+  return new Stripe(key);
+}
 
 // Generate a unique license key
 function generateLicenseKey() {
