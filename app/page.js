@@ -854,7 +854,7 @@ export default function VideoSilenceRemover() {
               <History className="w-4 h-4" />
               History
               {processingHistory.length > 0 && (
-                <span className="bg-slate-700 text-xs px-1.5 rounded-full">{processingHistory.length}/{planLimits.maxHistoryItems}</span>
+                <span className="bg-slate-700 text-xs px-1.5 rounded-full">{processingHistory.length}/{SHARED_LIMITS.maxHistoryItems}</span>
               )}
             </button>
             <button
