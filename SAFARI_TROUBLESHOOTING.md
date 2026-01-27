@@ -15,7 +15,7 @@ The application uses **FFmpeg.wasm**, which requires strict Cross-Origin securit
 - ✅ **Edge 92+** - Full support, best performance  
 - ✅ **Firefox 95+** - Full support, good performance
 
-**Access URL**: https://vidsilence.preview.emergentagent.com
+**Access URL**: https://quietcutter-1.preview.emergentagent.com
 
 ### Solution 2: Safari Workarounds
 If you must use Safari, try these steps:
@@ -57,7 +57,7 @@ Cross-Origin-Resource-Policy: cross-origin
 ### 1. Check if Server is Running
 Open terminal and run:
 ```bash
-curl -I https://vidsilence.preview.emergentagent.com
+curl -I https://quietcutter-1.preview.emergentagent.com
 ```
 
 Should return: `HTTP/2 200`
