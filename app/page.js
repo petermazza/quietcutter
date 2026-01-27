@@ -25,7 +25,6 @@ const SHARED_LIMITS = {
   maxSavedSettings: 5,
   maxHistoryItems: 10,
 }
-}
 
 export default function VideoSilenceRemover() {
   const [loaded, setLoaded] = useState(false)
