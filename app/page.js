@@ -830,7 +830,7 @@ export default function VideoSilenceRemover() {
         <div className="text-center mb-6 md:mb-8">
           <div className="flex items-center justify-center gap-3 mb-3 md:mb-4">
             <img 
-              src="https://customer-assets.emergentagent.com/job_vidsilence/artifacts/r1abjepv_Gemini_Generated_Image_ycesd7ycesd7yces.png" 
+              src="/quietcutter-logo.png" 
               alt="QuietCutter Logo" 
               className="w-12 h-12 md:w-16 md:h-16 rounded-xl"
             />
