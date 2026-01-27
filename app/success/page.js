@@ -89,18 +89,6 @@ export default function SuccessPage() {
                 <Check className="w-4 h-4 text-green-500" />
                 Videos up to 2 hours
               </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-500" />
-                Unlimited saved settings
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-500" />
-                50 items in history
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-500" />
-                Priority processing
-              </div>
             </div>
           </div>
           
