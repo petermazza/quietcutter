@@ -415,6 +415,43 @@ export default function VideoSilenceRemover() {
     setStatusMessage('Uploading video to server...')
     processingStartTime.current = Date.now()
     
+    // Animated progress simulation based on video duration
+    const videoDuration = videoMetadata?.duration || 60
+    const estimatedProcessingTime = Math.max(videoDuration * 0.3, 10) // ~0.3s per second of video (optimized)
+    let progressInterval = null
+    let currentProgress = 5
+    
+    // Start progress animation
+    progressInterval = setInterval(() => {
+      const elapsed = (Date.now() - processingStartTime.current) / 1000
+      const expectedProgress = Math.min(95, 5 + (elapsed / estimatedProcessingTime) * 90)
+      
+      // Smoothly update progress
+      if (currentProgress < expectedProgress) {
+        currentProgress = Math.min(currentProgress + 2, expectedProgress)
+        setProgress(Math.round(currentProgress))
+        
+        // Update step based on progress
+        if (currentProgress < 15) {
+          setCurrentStep('Uploading')
+          setStatusMessage('Uploading video to server...')
+        } else if (currentProgress < 40) {
+          setCurrentStep('Detecting Silence')
+          setStatusMessage('Analyzing audio for silent segments...')
+        } else if (currentProgress < 80) {
+          setCurrentStep('Cutting Segments')
+          setStatusMessage('Removing silent parts and re-encoding...')
+        } else {
+          setCurrentStep('Finalizing')
+          setStatusMessage('Almost done...')
+        }
+        
+        // Update time remaining
+        const remaining = Math.max(0, Math.ceil(estimatedProcessingTime - elapsed))
+        setEstimatedTimeRemaining(remaining)
+      }
+    }, 500)
+    
     try {
       // Prepare form data
       const formData = new FormData()
@@ -422,31 +459,21 @@ export default function VideoSilenceRemover() {
       formData.append('threshold', threshold.toString())
       formData.append('minDuration', minSilenceDuration.toString())
       
-      setProgress(10)
-      setCurrentStep('Detecting Silence')
-      setStatusMessage('Processing on server (this will actually shorten the video)...')
-      
-      // Estimate time based on video duration
-      if (videoMetadata?.duration) {
-        const estimatedSeconds = Math.ceil(videoMetadata.duration * 0.6) // ~0.6s per second of video
-        setEstimatedTimeRemaining(estimatedSeconds)
-      }
-      
       // Upload and process on server
       const response = await fetch('/api/process-video', {
         method: 'POST',
         body: formData,
       })
       
-      setProgress(50)
-      setCurrentStep('Cutting Segments')
+      // Stop progress animation
+      if (progressInterval) clearInterval(progressInterval)
       
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.details || 'Processing failed')
       }
       
-      setProgress(80)
+      setProgress(95)
       setCurrentStep('Finalizing')
       setStatusMessage('Downloading processed video...')
       
