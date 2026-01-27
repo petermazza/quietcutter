@@ -728,7 +728,7 @@ export default function VideoSilenceRemover() {
         {/* Header */}
         <div className="text-center mb-6 md:mb-8">
           <img 
-            src="/quietcutter-logo.png" 
+            src="/logo-clean1.svg" 
             alt="QuietCutter - Make every second count" 
             className="h-36 md:h-48 mx-auto mb-4"
           />
