@@ -103,27 +103,27 @@ function testSecurityUtilities() {
     
     // Test 6: Numeric sanitization
     console.log("\n6. Testing sanitizeNumeric...");
-    let result = sanitizeNumeric('invalid', 0, 100, 50);
-    if (result === 50) {
+    let numResult = sanitizeNumeric('invalid', 0, 100, 50);
+    if (numResult === 50) {
       console.log("✅ Invalid numeric input defaults correctly");
     } else {
-      console.log(`❌ Invalid numeric input handling failed: ${result}`);
+      console.log(`❌ Invalid numeric input handling failed: ${numResult}`);
       allPassed = false;
     }
     
-    result = sanitizeNumeric(150, 0, 100, 50);
-    if (result === 100) {
+    numResult = sanitizeNumeric(150, 0, 100, 50);
+    if (numResult === 100) {
       console.log("✅ Numeric input clamped to max correctly");
     } else {
-      console.log(`❌ Numeric max clamping failed: ${result}`);
+      console.log(`❌ Numeric max clamping failed: ${numResult}`);
       allPassed = false;
     }
     
-    result = sanitizeNumeric(-10, 0, 100, 50);
-    if (result === 0) {
+    numResult = sanitizeNumeric(-10, 0, 100, 50);
+    if (numResult === 0) {
       console.log("✅ Numeric input clamped to min correctly");
     } else {
-      console.log(`❌ Numeric min clamping failed: ${result}`);
+      console.log(`❌ Numeric min clamping failed: ${numResult}`);
       allPassed = false;
     }
     
