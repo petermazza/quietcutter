@@ -1469,7 +1469,6 @@ export default function VideoSilenceRemover() {
             <p className="font-medium mb-1">💡 Browser Compatibility:</p>
             <p><strong>Recommended:</strong> Chrome 92+, Edge 92+, Firefox 95+</p>
             <p className="mt-1"><strong>Safari:</strong> Safari 15.2+ supported (macOS Monterey or iOS 15.2+)</p>
-            <p className="mt-1">Access: <strong className="text-blue-400">https://quietcutter-1.preview.emergentagent.com</strong></p>
           </div>
         </div>
       </div>
