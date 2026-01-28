@@ -1,8 +1,25 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Next.js MongoDB Template',
-  description: 'A simple template with App Router, MongoDB, and shadcn/ui',
+  title: 'QuietCutter - Remove Silence from Videos',
+  description: 'Automatically detect and remove silent sections from your videos. Make every second count.',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
+  openGraph: {
+    title: 'QuietCutter - Remove Silence from Videos',
+    description: 'Automatically detect and remove silent sections from your videos. Make every second count.',
+    url: 'https://quietcutter.com',
+    siteName: 'QuietCutter',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'QuietCutter - Remove Silence from Videos',
+    description: 'Automatically detect and remove silent sections from your videos.',
+  },
 }
 
 export default function RootLayout({ children }) {
