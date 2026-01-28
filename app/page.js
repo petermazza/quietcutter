@@ -175,6 +175,67 @@ export default function VideoSilenceRemover() {
     }
   }
   
+  // Auth functions
+  const checkAuthStatus = async () => {
+    try {
+      const response = await fetch('/api/auth/me')
+      const data = await response.json()
+      if (data.user) {
+        setUser(data.user)
+        if (data.user.plan === 'pro') {
+          setUserTier('pro')
+        }
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error)
+    }
+  }
+  
+  const handleSendMagicLink = async (e) => {
+    e.preventDefault()
+    if (!loginEmail) return
+    
+    setLoginLoading(true)
+    setLoginError('')
+    setLoginMessage('')
+    
+    try {
+      const response = await fetch('/api/auth/send-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail }),
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        setLoginMessage('Check your email for a sign-in link!')
+        setLoginEmail('')
+      } else {
+        setLoginError(data.error || 'Failed to send magic link')
+      }
+    } catch (error) {
+      setLoginError('Something went wrong. Please try again.')
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+  
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      setUser(null)
+      setUserTier('free')
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
+  }
+  
+  // Check auth on mount
+  useEffect(() => {
+    checkAuthStatus()
+  }, [])
+  
   // Load user tier and usage from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
