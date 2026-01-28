@@ -870,7 +870,7 @@ export default function VideoSilenceRemover() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 flex flex-col">
       {/* Hidden video element for metadata extraction */}
       <video 
         ref={metadataVideoRef} 
@@ -878,7 +878,21 @@ export default function VideoSilenceRemover() {
         preload="metadata"
       />
       
-      <div className="container mx-auto px-4 py-4 md:py-8 max-w-5xl">
+      {/* Navigation Header */}
+      <header className="border-b border-slate-700/50">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <img src="/quietcutter-logo.png" alt="QuietCutter" className="h-8 w-auto" />
+          </a>
+          <nav className="flex items-center gap-4 md:gap-6 text-sm">
+            <a href="/about" className="text-slate-400 hover:text-white transition-colors">About</a>
+            <a href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</a>
+            <a href="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</a>
+          </nav>
+        </div>
+      </header>
+      
+      <div className="flex-1 container mx-auto px-4 py-4 md:py-8 max-w-5xl">
         {/* User Auth & Plan Badge */}
         <div className="flex justify-between items-center mb-2">
           {/* User Login/Profile */}
