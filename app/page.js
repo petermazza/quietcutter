@@ -231,6 +231,11 @@ export default function VideoSilenceRemover() {
       await fetch('/api/auth/logout', { method: 'POST' })
       setUser(null)
       setUserTier('free')
+      setDailyUsage({ date: '', count: 0 })
+      // Clear old localStorage data
+      localStorage.removeItem('silenceRemover_userTier')
+      localStorage.removeItem('silenceRemover_licenseKey')
+      localStorage.removeItem('silenceRemover_dailyUsage')
     } catch (error) {
       console.error('Logout failed:', error)
     }
@@ -239,6 +244,12 @@ export default function VideoSilenceRemover() {
   // Check auth on mount
   useEffect(() => {
     checkAuthStatus()
+    // Clear old localStorage data since we now use server-side tracking
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('silenceRemover_userTier')
+      localStorage.removeItem('silenceRemover_licenseKey')
+      localStorage.removeItem('silenceRemover_dailyUsage')
+    }
   }, [])
   
   // Load user tier and usage from localStorage
