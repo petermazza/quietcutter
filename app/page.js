@@ -766,6 +766,89 @@ export default function VideoSilenceRemover() {
     }
   }
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show login screen if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <img 
+              src="/quietcutter-logo.png" 
+              alt="QuietCutter" 
+              className="h-32 mx-auto mb-4"
+            />
+            <h1 className="text-3xl font-bold mb-2">QuietCutter</h1>
+            <p className="text-slate-400">Make every second count</p>
+          </div>
+          
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+            <h2 className="text-xl font-semibold mb-4 text-center">Sign in to continue</h2>
+            <p className="text-slate-400 text-sm mb-6 text-center">
+              Enter your email and we'll send you a magic link to sign in
+            </p>
+            
+            <form onSubmit={handleSendMagicLink} className="space-y-4">
+              <div>
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                  disabled={loginLoading}
+                  required
+                />
+                {loginError && (
+                  <p className="text-red-400 text-sm mt-2">{loginError}</p>
+                )}
+                {loginMessage && (
+                  <p className="text-green-400 text-sm mt-2">{loginMessage}</p>
+                )}
+              </div>
+              
+              <button
+                type="submit"
+                disabled={loginLoading || !loginEmail}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loginLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    Send Magic Link
+                  </>
+                )}
+              </button>
+            </form>
+            
+            <div className="mt-6 pt-6 border-t border-slate-700">
+              <p className="text-xs text-slate-500 text-center">
+                Free users: 3 videos/day, max 10 min each<br/>
+                Pro users: Unlimited videos, up to 2 hours
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100">
       {/* Hidden video element for metadata extraction */}
