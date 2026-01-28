@@ -61,6 +61,7 @@ export default function VideoSilenceRemover() {
   
   // Auth state
   const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true) // Loading auth state
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginEmail, setLoginEmail] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
