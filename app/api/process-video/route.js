@@ -35,43 +35,49 @@ export async function POST(request) {
   let detectPath = null;
   
   try {
-    // ============ SECURITY: Authentication Required ============
+    // ============ SECURITY: Rate Limiting ============
+    const clientIP = getClientIP(request);
+    const rateLimitResult = rateLimit(`video_${clientIP}`, 5, 60000); // 5 requests per minute
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a moment.', retryAfter: rateLimitResult.retryAfter },
+        { status: 429, headers: { ...SECURITY_HEADERS, 'Retry-After': String(Math.ceil(rateLimitResult.retryAfter / 1000)) } }
+      );
+    }
+    
+    // ============ Authentication (Optional for Free Tier) ============
     const cookieStore = await cookies();
     const session = cookieStore.get('session')?.value;
     
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Authentication required. Please sign in.' },
-        { status: 401, headers: SECURITY_HEADERS }
-      );
-    }
-    
-    const payload = await decrypt(session);
-    if (!payload) {
-      return NextResponse.json(
-        { error: 'Invalid session. Please sign in again.' },
-        { status: 401, headers: SECURITY_HEADERS }
-      );
-    }
-    
-    // Get user from database
-    const client = await clientPromise;
     let user = null;
     let db = null;
+    let userPlan = 'free';
+    let isAuthenticated = false;
     
-    if (client) {
-      db = client.db();
-      user = await db.collection('users').findOne({ email: payload.email });
+    if (session) {
+      const payload = await decrypt(session);
+      if (payload) {
+        isAuthenticated = true;
+        // Get user from database
+        const client = await clientPromise;
+        
+        if (client) {
+          db = client.db();
+          user = await db.collection('users').findOne({ email: payload.email });
+        }
+        
+        userPlan = user?.plan || payload.plan || 'free';
+      }
     }
     
-    const userPlan = user?.plan || payload.plan || 'free';
     const limits = PLAN_LIMITS[userPlan];
     
-    // Check daily usage
+    // Check daily usage for authenticated users (server-side tracking)
     const today = new Date().toDateString();
     let videosProcessedToday = 0;
     
-    if (user) {
+    if (isAuthenticated && user) {
       if (user.lastVideoDate === today) {
         videosProcessedToday = user.videosProcessedToday || 0;
       }
