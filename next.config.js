@@ -60,6 +60,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self'",
+              "media-src 'self' blob: data:",
               "connect-src 'self' https://api.stripe.com",
               "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
               "object-src 'none'",
