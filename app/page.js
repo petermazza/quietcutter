@@ -154,6 +154,14 @@ export default function VideoSilenceRemover() {
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   
   const handleCheckout = async (planType) => {
+    // If user is not logged in, prompt them to sign in first
+    if (!user) {
+      setShowUpgradeModal(false)
+      setShowLoginModal(true)
+      setLoginMessage('Please sign in to upgrade to Pro')
+      return
+    }
+    
     setCheckoutLoading(true)
     try {
       const response = await fetch('/api/stripe/create-checkout', {
