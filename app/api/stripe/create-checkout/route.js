@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import Stripe from 'stripe';
+import { decrypt } from '@/lib/auth';
 import { 
   rateLimit, 
   getClientIP,
@@ -15,28 +17,30 @@ function getStripe() {
   return new Stripe(key);
 }
 
-// Generate a unique license key with cryptographic randomness
-function generateLicenseKey() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const segments = [];
-  for (let i = 0; i < 3; i++) {
-    let segment = '';
-    for (let j = 0; j < 4; j++) {
-      // Use crypto-quality randomness
-      const randomBytes = new Uint8Array(1);
-      crypto.getRandomValues(randomBytes);
-      segment += chars.charAt(randomBytes[0] % chars.length);
-    }
-    segments.push(segment);
-  }
-  return `LIFE-${segments.join('-')}`;
-}
-
 // Valid plan types (whitelist)
 const VALID_PLAN_TYPES = ['lifetime', 'monthly'];
 
 export async function POST(request) {
   try {
+    // ============ SECURITY: Authentication Required ============
+    const cookieStore = await cookies();
+    const session = cookieStore.get('session')?.value;
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Please sign in to upgrade.' },
+        { status: 401, headers: SECURITY_HEADERS }
+      );
+    }
+    
+    const payload = await decrypt(session);
+    if (!payload) {
+      return NextResponse.json(
+        { error: 'Invalid session. Please sign in again.' },
+        { status: 401, headers: SECURITY_HEADERS }
+      );
+    }
+    
     // ============ SECURITY: Rate Limiting ============
     const clientIP = getClientIP(request);
     const rateLimitResult = rateLimit(clientIP, 10, 60000); // 10 checkout attempts per minute
@@ -125,11 +129,9 @@ export async function POST(request) {
       mode = 'subscription';
     }
     
-    // Generate license key with crypto randomness
-    const licenseKey = generateLicenseKey();
-    
-    const session = await stripe.checkout.sessions.create({
+    const session_stripe = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
+      customer_email: payload.email, // Pre-fill with user's email
       line_items: [
         {
           price_data: priceData,
@@ -137,10 +139,10 @@ export async function POST(request) {
         },
       ],
       mode: mode,
-      success_url: `${validatedBaseUrl}/success?session_id={CHECKOUT_SESSION_ID}&license=${encodeURIComponent(licenseKey)}`,
+      success_url: `${validatedBaseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${validatedBaseUrl}?canceled=true`,
       metadata: {
-        licenseKey: licenseKey,
+        userEmail: payload.email,
         planType: planType,
       },
       // Additional security options
@@ -149,8 +151,8 @@ export async function POST(request) {
     
     return NextResponse.json(
       { 
-        sessionId: session.id, 
-        url: session.url 
+        sessionId: session_stripe.id, 
+        url: session_stripe.url 
       },
       { headers: SECURITY_HEADERS }
     );
