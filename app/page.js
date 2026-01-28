@@ -241,14 +241,23 @@ export default function VideoSilenceRemover() {
     }
   }
   
-  // Check auth on mount
+  // Check auth on mount and load usage
   useEffect(() => {
     checkAuthStatus()
-    // Clear old localStorage data since we now use server-side tracking
+    // Load usage from localStorage for non-logged-in users
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('silenceRemover_userTier')
-      localStorage.removeItem('silenceRemover_licenseKey')
-      localStorage.removeItem('silenceRemover_dailyUsage')
+      try {
+        const savedUsage = localStorage.getItem('silenceRemover_dailyUsage')
+        if (savedUsage) {
+          const parsed = JSON.parse(savedUsage)
+          // Only use if it's from today
+          if (parsed.date === new Date().toDateString()) {
+            setDailyUsage(parsed)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load usage from localStorage:', error)
+      }
     }
   }, [])
   
