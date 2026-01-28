@@ -859,6 +859,7 @@ export default function VideoSilenceRemover() {
                 <span className="text-slate-500 text-sm">© 2026 QuietCutter</span>
               </div>
               <nav className="flex items-center gap-6 text-sm">
+                <a href="/" className="text-slate-400 hover:text-white transition-colors">Home</a>
                 <a href="/about" className="text-slate-400 hover:text-white transition-colors">About</a>
                 <a href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</a>
                 <a href="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</a>
@@ -1838,6 +1839,7 @@ export default function VideoSilenceRemover() {
               <span className="text-slate-500 text-sm">© 2026 QuietCutter</span>
             </div>
             <nav className="flex items-center gap-6 text-sm">
+              <a href="/" className="text-slate-400 hover:text-white transition-colors">Home</a>
               <a href="/about" className="text-slate-400 hover:text-white transition-colors">About</a>
               <a href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</a>
               <a href="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</a>
