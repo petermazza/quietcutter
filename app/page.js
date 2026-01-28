@@ -776,16 +776,14 @@ export default function VideoSilenceRemover() {
             <img 
               src="/quietcutter-logo.png" 
               alt="QuietCutter" 
-              className="h-32 mx-auto mb-4"
+              className="h-40 mx-auto"
             />
-            <h1 className="text-3xl font-bold mb-2">QuietCutter</h1>
-            <p className="text-slate-400">Make every second count</p>
           </div>
           
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <h2 className="text-xl font-semibold mb-4 text-center">Sign in to continue</h2>
             <p className="text-slate-400 text-sm mb-6 text-center">
-              Enter your email and we'll send you a magic link to sign in
+              Enter your email and we'll send you a magic link
             </p>
             
             <form onSubmit={handleSendMagicLink} className="space-y-4">
