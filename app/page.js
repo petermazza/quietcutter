@@ -178,17 +178,21 @@ export default function VideoSilenceRemover() {
   
   // Auth functions
   const checkAuthStatus = async () => {
+    setAuthLoading(true)
     try {
       const response = await fetch('/api/auth/me')
       const data = await response.json()
       if (data.user) {
         setUser(data.user)
+        setDailyUsage({ date: new Date().toDateString(), count: data.user.videosProcessedToday || 0 })
         if (data.user.plan === 'pro') {
           setUserTier('pro')
         }
       }
     } catch (error) {
       console.error('Auth check failed:', error)
+    } finally {
+      setAuthLoading(false)
     }
   }
   
