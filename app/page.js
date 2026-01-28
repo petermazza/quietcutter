@@ -1826,6 +1826,23 @@ export default function VideoSilenceRemover() {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="border-t border-slate-700/50 mt-auto">
+        <div className="max-w-5xl mx-auto px-4 py-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <img src="/quietcutter-logo.png" alt="QuietCutter" className="h-6 w-auto" />
+              <span className="text-slate-500 text-sm">© 2026 QuietCutter</span>
+            </div>
+            <nav className="flex items-center gap-6 text-sm">
+              <a href="/about" className="text-slate-400 hover:text-white transition-colors">About</a>
+              <a href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</a>
+              <a href="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</a>
+            </nav>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
