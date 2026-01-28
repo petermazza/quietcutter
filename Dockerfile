@@ -19,8 +19,17 @@ COPY . .
 # Build the app
 RUN yarn build
 
-# Copy public folder and static assets to standalone
-RUN cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
+# Verify public folder exists and show contents
+RUN ls -la public/ && ls -la .next/standalone/
+
+# Copy public folder to standalone (must happen AFTER build)
+RUN cp -r /app/public /app/.next/standalone/public
+
+# Copy static assets to standalone
+RUN cp -r /app/.next/static /app/.next/standalone/.next/static
+
+# Verify the copy worked
+RUN ls -la /app/.next/standalone/public/
 
 # Set working directory to standalone
 WORKDIR /app/.next/standalone
