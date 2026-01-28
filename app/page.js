@@ -1643,6 +1643,67 @@ export default function VideoSilenceRemover() {
           </div>
         </div>
       )}
+      
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowLoginModal(false)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                <Mail className="w-5 h-5 text-blue-500" />
+                Sign In
+              </h3>
+              <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-slate-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <p className="text-slate-400 mb-4">Enter your email and we'll send you a magic sign-in link</p>
+            
+            <form onSubmit={handleSendMagicLink} className="space-y-4">
+              <div>
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                  disabled={loginLoading}
+                  required
+                />
+                {loginError && (
+                  <p className="text-red-400 text-sm mt-2">{loginError}</p>
+                )}
+                {loginMessage && (
+                  <p className="text-green-400 text-sm mt-2">{loginMessage}</p>
+                )}
+              </div>
+              
+              <button
+                type="submit"
+                disabled={loginLoading || !loginEmail}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loginLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    Send Magic Link
+                  </>
+                )}
+              </button>
+              
+              <p className="text-xs text-slate-500 text-center">
+                No password needed. We'll email you a secure sign-in link.
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
