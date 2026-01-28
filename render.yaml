@@ -1,0 +1,16 @@
+# Render.com configuration
+services:
+  - type: web
+    name: quietcutter
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: HOSTNAME
+        value: 0.0.0.0
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_BASE_URL
+        sync: false
+    healthCheckPath: /
