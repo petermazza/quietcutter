@@ -771,8 +771,33 @@ export default function VideoSilenceRemover() {
       />
       
       <div className="container mx-auto px-4 py-4 md:py-8 max-w-5xl">
-        {/* Plan Badge & Upgrade */}
-        <div className="flex justify-end mb-2">
+        {/* User Auth & Plan Badge */}
+        <div className="flex justify-between items-center mb-2">
+          {/* User Login/Profile */}
+          <div>
+            {user ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-400">{user.email}</span>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
+                >
+                  <LogOut className="w-3 h-3" />
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 hover:border-blue-500 rounded-lg text-sm text-slate-300 transition-all"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign in
+              </button>
+            )}
+          </div>
+          
+          {/* Plan Badge */}
           {isPro ? (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600 rounded-full text-sm font-medium">
               <Crown className="w-4 h-4" />
