@@ -254,17 +254,18 @@ export async function POST(request) {
     const { stdout: outputDurationStr } = await execAsync(outputDurationCmd, { timeout: 30000 });
     const outputDuration = parseFloat(outputDurationStr.trim());
     
-    // ============ Increment Usage Count ============
-    if (db && user) {
+    // ============ Increment Usage Count (for authenticated users only) ============
+    if (isAuthenticated && db && user) {
       const today = new Date().toDateString();
       await db.collection('users').updateOne(
-        { email: payload.email },
+        { email: user.email },
         { 
           $inc: { videosProcessedToday: 1 },
           $set: { lastVideoDate: today }
         }
       );
     }
+    // Note: For non-authenticated users, usage is tracked client-side via localStorage
     
     // ============ SECURITY: Secure Cleanup ============
     await cleanup(inputPath, outputPath, detectPath, tempDir);
