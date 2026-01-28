@@ -150,6 +150,7 @@ export default function AboutPage() {
               <span className="text-slate-400 text-sm">© 2026 QuietCutter. All rights reserved.</span>
             </div>
             <nav className="flex items-center gap-6 text-sm">
+              <Link href="/" className="text-slate-400 hover:text-white transition-colors">Home</Link>
               <Link href="/about" className="text-slate-400 hover:text-white transition-colors">About</Link>
               <Link href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</Link>
               <Link href="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</Link>
