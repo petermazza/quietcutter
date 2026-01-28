@@ -56,11 +56,10 @@ export default function ContactPage() {
             <img src="/quietcutter-logo.png" alt="QuietCutter" className="h-10 w-auto" />
           </Link>
           <nav className="flex items-center gap-6 text-sm">
+            <Link href="/" className="text-slate-300 hover:text-white transition-colors">Home</Link>
             <Link href="/about" className="text-slate-300 hover:text-white transition-colors">About</Link>
             <Link href="/blog" className="text-slate-300 hover:text-white transition-colors">Blog</Link>
-            <Link href="/" className="bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity">
-              Try Free
-            </Link>
+            <Link href="/contact" className="text-white font-medium">Contact</Link>
           </nav>
         </div>
       </header>

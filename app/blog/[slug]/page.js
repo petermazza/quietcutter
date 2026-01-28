@@ -239,8 +239,9 @@ export default function BlogPostPage() {
             <img src="/quietcutter-logo.png" alt="QuietCutter" className="h-10 w-auto" />
           </Link>
           <nav className="flex items-center gap-6 text-sm">
+            <Link href="/" className="text-slate-300 hover:text-white transition-colors">Home</Link>
             <Link href="/about" className="text-slate-300 hover:text-white transition-colors">About</Link>
-            <Link href="/blog" className="text-slate-300 hover:text-white transition-colors">Blog</Link>
+            <Link href="/blog" className="text-white font-medium">Blog</Link>
             <Link href="/contact" className="text-slate-300 hover:text-white transition-colors">Contact</Link>
           </nav>
         </div>
