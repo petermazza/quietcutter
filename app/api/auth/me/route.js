@@ -27,8 +27,22 @@ export async function GET(request) {
 
     // Get fresh user data from database
     const client = await clientPromise;
-    const db = client.db();
     
+    if (!client) {
+      // Database not configured - return session data only
+      return NextResponse.json(
+        { 
+          user: {
+            email: payload.email,
+            plan: payload.plan || 'free',
+            videosProcessedToday: 0,
+          }
+        },
+        { status: 200, headers: SECURITY_HEADERS }
+      );
+    }
+    
+    const db = client.db();
     const user = await db.collection('users').findOne({ email: payload.email });
     
     if (!user) {
@@ -38,11 +52,25 @@ export async function GET(request) {
       );
     }
 
+    // Check if we need to reset daily count
+    const today = new Date().toDateString();
+    let videosProcessedToday = user.videosProcessedToday || 0;
+    
+    if (user.lastVideoDate !== today) {
+      // Reset count for new day
+      videosProcessedToday = 0;
+      await db.collection('users').updateOne(
+        { email: payload.email },
+        { $set: { videosProcessedToday: 0, lastVideoDate: today } }
+      );
+    }
+
     return NextResponse.json(
       { 
         user: {
           email: user.email,
           plan: user.plan || 'free',
+          videosProcessedToday: videosProcessedToday,
           stripeCustomerId: user.stripeCustomerId,
           subscriptionStatus: user.subscriptionStatus,
         }
