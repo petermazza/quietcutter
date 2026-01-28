@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
 import { Progress } from './components/ui/progress'
-import { Upload, Download, Play, Loader2, Video, FileVideo, History, Clock, Star, Trash2, RotateCcw, Crown, X, Check, Zap, CreditCard } from 'lucide-react'
+import { Upload, Download, Play, Loader2, Video, FileVideo, History, Clock, Star, Trash2, RotateCcw, Crown, X, Check, Zap, CreditCard, LogIn, LogOut, Mail } from 'lucide-react'
 
 // Plan limits - simplified to focus on real value
 const PLAN_LIMITS = {
@@ -58,6 +58,14 @@ export default function VideoSilenceRemover() {
   const [showLicenseModal, setShowLicenseModal] = useState(false)
   const [licenseKeyInput, setLicenseKeyInput] = useState('')
   const [licenseError, setLicenseError] = useState('')
+  
+  // Auth state
+  const [user, setUser] = useState(null)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [loginMessage, setLoginMessage] = useState('')
+  const [loginError, setLoginError] = useState('')
   
   const videoPreviewRef = useRef(null)
   const metadataVideoRef = useRef(null) // Hidden video element for metadata extraction
