@@ -770,68 +770,101 @@ export default function VideoSilenceRemover() {
   // Show login screen if not authenticated
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <img 
-              src="/quietcutter-logo.png" 
-              alt="QuietCutter" 
-              className="h-40 mx-auto"
-            />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 flex flex-col">
+        {/* Navigation Header */}
+        <header className="border-b border-slate-700/50">
+          <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <img src="/quietcutter-logo.png" alt="QuietCutter" className="h-10 w-auto" />
+            </a>
+            <nav className="flex items-center gap-6 text-sm">
+              <a href="/about" className="text-slate-300 hover:text-white transition-colors">About</a>
+              <a href="/blog" className="text-slate-300 hover:text-white transition-colors">Blog</a>
+              <a href="/contact" className="text-slate-300 hover:text-white transition-colors">Contact</a>
+            </nav>
           </div>
-          
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-            <h2 className="text-xl font-semibold mb-4 text-center">Sign in to continue</h2>
-            <p className="text-slate-400 text-sm mb-6 text-center">
-              Enter your email and we'll send you a magic link
-            </p>
+        </header>
+
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="max-w-md w-full">
+            <div className="text-center mb-8">
+              <img 
+                src="/quietcutter-logo.png" 
+                alt="QuietCutter" 
+                className="h-40 mx-auto"
+              />
+            </div>
             
-            <form onSubmit={handleSendMagicLink} className="space-y-4">
-              <div>
-                <input
-                  type="email"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
-                  disabled={loginLoading}
-                  required
-                />
-                {loginError && (
-                  <p className="text-red-400 text-sm mt-2">{loginError}</p>
-                )}
-                {loginMessage && (
-                  <p className="text-green-400 text-sm mt-2">{loginMessage}</p>
-                )}
-              </div>
-              
-              <button
-                type="submit"
-                disabled={loginLoading || !loginEmail}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loginLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="w-4 h-4" />
-                    Send Magic Link
-                  </>
-                )}
-              </button>
-            </form>
-            
-            <div className="mt-6 pt-6 border-t border-slate-700">
-              <p className="text-xs text-slate-500 text-center">
-                Free users: 3 videos/day, max 10 min each<br/>
-                Pro users: Unlimited videos, up to 2 hours
+            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+              <h2 className="text-xl font-semibold mb-4 text-center">Sign in to continue</h2>
+              <p className="text-slate-400 text-sm mb-6 text-center">
+                Enter your email and we'll send you a magic link
               </p>
+              
+              <form onSubmit={handleSendMagicLink} className="space-y-4">
+                <div>
+                  <input
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                    disabled={loginLoading}
+                    required
+                  />
+                  {loginError && (
+                    <p className="text-red-400 text-sm mt-2">{loginError}</p>
+                  )}
+                  {loginMessage && (
+                    <p className="text-green-400 text-sm mt-2">{loginMessage}</p>
+                  )}
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={loginLoading || !loginEmail}
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {loginLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" />
+                      Send Magic Link
+                    </>
+                  )}
+                </button>
+              </form>
+              
+              <div className="mt-6 pt-6 border-t border-slate-700">
+                <p className="text-xs text-slate-500 text-center">
+                  Free users: 3 videos/day, max 10 min each<br/>
+                  Pro users: Unlimited videos, up to 2 hours
+                </p>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <footer className="border-t border-slate-700/50">
+          <div className="max-w-4xl mx-auto px-6 py-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <img src="/quietcutter-logo.png" alt="QuietCutter" className="h-6 w-auto" />
+                <span className="text-slate-500 text-sm">© 2026 QuietCutter</span>
+              </div>
+              <nav className="flex items-center gap-6 text-sm">
+                <a href="/about" className="text-slate-400 hover:text-white transition-colors">About</a>
+                <a href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</a>
+                <a href="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</a>
+              </nav>
+            </div>
+          </div>
+        </footer>
       </div>
     )
   }
