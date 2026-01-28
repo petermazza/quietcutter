@@ -4,9 +4,9 @@ export const metadata = {
   title: 'QuietCutter - Remove Silence from Videos',
   description: 'Automatically detect and remove silent sections from your videos. Make every second count.',
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
-    apple: '/favicon.svg',
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
   },
   openGraph: {
     title: 'QuietCutter - Remove Silence from Videos',
