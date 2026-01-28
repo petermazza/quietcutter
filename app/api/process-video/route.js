@@ -170,11 +170,16 @@ export async function POST(request) {
       throw new Error('Could not determine video duration. File may be corrupted.');
     }
     
-    if (duration > FILE_LIMITS.PRO_MAX_DURATION) {
+    // Check duration against user's plan limit
+    const maxDurationSeconds = limits.maxDurationMinutes * 60;
+    if (duration > maxDurationSeconds) {
       await cleanup(inputPath, outputPath, detectPath, tempDir);
       return NextResponse.json(
-        { error: `Video too long. Maximum duration is ${FILE_LIMITS.PRO_MAX_DURATION / 60} minutes.` },
-        { status: 400, headers: SECURITY_HEADERS }
+        { 
+          error: `Video too long. Your plan allows up to ${limits.maxDurationMinutes} minutes. Upgrade to Pro for up to 2 hours.`,
+          upgradeRequired: true
+        },
+        { status: 403, headers: SECURITY_HEADERS }
       );
     }
     
