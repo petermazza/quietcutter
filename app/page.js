@@ -184,13 +184,16 @@ export default function VideoSilenceRemover() {
       const data = await response.json()
       if (data.user) {
         setUser(data.user)
+        // Use server-side usage for logged-in users
         setDailyUsage({ date: new Date().toDateString(), count: data.user.videosProcessedToday || 0 })
         if (data.user.plan === 'pro') {
           setUserTier('pro')
         }
       }
+      // If no user, keep using localStorage usage (already loaded)
     } catch (error) {
       console.error('Auth check failed:', error)
+      // Keep using localStorage usage on error
     } finally {
       setAuthLoading(false)
     }
