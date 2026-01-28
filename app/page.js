@@ -886,6 +886,7 @@ export default function VideoSilenceRemover() {
             <img src="/quietcutter-logo.png" alt="QuietCutter" className="h-8 w-auto" />
           </a>
           <nav className="flex items-center gap-4 md:gap-6 text-sm">
+            <a href="/" className="text-white font-medium">Home</a>
             <a href="/about" className="text-slate-400 hover:text-white transition-colors">About</a>
             <a href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</a>
             <a href="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</a>
