@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { writeFile, unlink, readFile, mkdir, rm } from 'fs/promises';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
+import clientPromise from '@/lib/mongodb';
+import { decrypt } from '@/lib/auth';
 import { 
   rateLimit, 
   validateVideoFile, 
@@ -16,6 +19,12 @@ import {
 
 const execAsync = promisify(exec);
 
+// Plan limits
+const PLAN_LIMITS = {
+  free: { videosPerDay: 3, maxDurationMinutes: 10 },
+  pro: { videosPerDay: Infinity, maxDurationMinutes: 120 }
+};
+
 // Maximum file size (500MB for this endpoint - can be adjusted per tier)
 const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
@@ -26,6 +35,59 @@ export async function POST(request) {
   let detectPath = null;
   
   try {
+    // ============ SECURITY: Authentication Required ============
+    const cookieStore = await cookies();
+    const session = cookieStore.get('session')?.value;
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please sign in.' },
+        { status: 401, headers: SECURITY_HEADERS }
+      );
+    }
+    
+    const payload = await decrypt(session);
+    if (!payload) {
+      return NextResponse.json(
+        { error: 'Invalid session. Please sign in again.' },
+        { status: 401, headers: SECURITY_HEADERS }
+      );
+    }
+    
+    // Get user from database
+    const client = await clientPromise;
+    let user = null;
+    let db = null;
+    
+    if (client) {
+      db = client.db();
+      user = await db.collection('users').findOne({ email: payload.email });
+    }
+    
+    const userPlan = user?.plan || payload.plan || 'free';
+    const limits = PLAN_LIMITS[userPlan];
+    
+    // Check daily usage
+    const today = new Date().toDateString();
+    let videosProcessedToday = 0;
+    
+    if (user) {
+      if (user.lastVideoDate === today) {
+        videosProcessedToday = user.videosProcessedToday || 0;
+      }
+      
+      // Check if limit exceeded
+      if (videosProcessedToday >= limits.videosPerDay) {
+        return NextResponse.json(
+          { 
+            error: `Daily limit reached (${limits.videosPerDay} videos). Upgrade to Pro for unlimited videos.`,
+            upgradeRequired: true
+          },
+          { status: 403, headers: SECURITY_HEADERS }
+        );
+      }
+    }
+    
     // ============ SECURITY: Rate Limiting ============
     const clientIP = getClientIP(request);
     const rateLimitResult = rateLimit(clientIP, 5, 60000); // 5 requests per minute
