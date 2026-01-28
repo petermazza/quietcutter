@@ -252,28 +252,6 @@ export default function VideoSilenceRemover() {
     }
   }, [])
   
-  // Load user tier and usage from localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedTier = localStorage.getItem('silenceRemover_userTier')
-      const savedKey = localStorage.getItem('silenceRemover_licenseKey')
-      const savedUsage = localStorage.getItem('silenceRemover_dailyUsage')
-      
-      if (savedTier === 'pro' && savedKey && validateLicenseKey(savedKey)) {
-        setUserTier('pro')
-        setLicenseKey(savedKey)
-      }
-      
-      if (savedUsage) {
-        try {
-          setDailyUsage(JSON.parse(savedUsage))
-        } catch (e) {
-          console.error('Failed to load daily usage')
-        }
-      }
-    }
-  }, [])
-  
   // Load history and settings from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
