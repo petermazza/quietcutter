@@ -2,30 +2,54 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Check, Crown, Copy, ArrowLeft } from 'lucide-react'
+import { Check, Crown, ArrowLeft, Loader2 } from 'lucide-react'
 
 function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [copied, setCopied] = useState(false)
+  const [upgrading, setUpgrading] = useState(true)
+  const [error, setError] = useState('')
   
   const sessionId = searchParams.get('session_id')
-  const licenseKey = searchParams.get('license')
   
   useEffect(() => {
-    // Auto-activate license when page loads
-    if (licenseKey) {
-      localStorage.setItem('silenceRemover_licenseKey', licenseKey)
-      localStorage.setItem('silenceRemover_userTier', 'pro')
+    // Upgrade user's plan on the server
+    const upgradePlan = async () => {
+      if (!sessionId) {
+        setUpgrading(false)
+        return
+      }
+      
+      try {
+        const response = await fetch('/api/stripe/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId }),
+        })
+        
+        const data = await response.json()
+        
+        if (!response.ok) {
+          setError(data.error || 'Failed to verify payment')
+        }
+      } catch (error) {
+        console.error('Upgrade error:', error)
+        setError('Failed to verify payment')
+      } finally {
+        setUpgrading(false)
+      }
     }
-  }, [licenseKey])
+    
+    upgradePlan()
+  }, [sessionId])
   
-  const copyLicense = () => {
-    if (licenseKey) {
-      navigator.clipboard.writeText(licenseKey)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
+  if (upgrading) {
+    return (
+      <div className="max-w-md w-full text-center">
+        <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
+        <p className="text-slate-400">Verifying your payment...</p>
+      </div>
+    )
   }
   
   return (
@@ -45,36 +69,17 @@ function SuccessContent() {
           Welcome to QuietCutter Pro! Your account has been upgraded.
         </p>
         
+        {error && (
+          <p className="text-amber-400 text-sm mb-4">
+            Note: {error}. Your payment was received - please contact support if Pro features aren't activated.
+          </p>
+        )}
+        
         {/* Pro Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-600 to-amber-600 rounded-full text-sm font-medium mb-6">
           <Crown className="w-4 h-4" />
-          PRO Lifetime Activated
+          PRO Activated
         </div>
-        
-        {/* License Key Box */}
-        {licenseKey && (
-          <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4 mb-6">
-            <div className="text-xs text-slate-400 mb-2">Your License Key (save this!)</div>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 font-mono text-lg text-blue-400 tracking-wider">
-                {licenseKey}
-              </code>
-              <button
-                onClick={copyLicense}
-                className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-green-400" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </button>
-            </div>
-            <div className="text-xs text-slate-500 mt-2">
-              Use this key to restore Pro on other devices
-            </div>
-          </div>
-        )}
         
         {/* Pro Features */}
         <div className="bg-slate-900/30 rounded-lg p-4 mb-6 text-left">
