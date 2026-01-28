@@ -267,6 +267,18 @@ export async function POST(request) {
     const { stdout: outputDurationStr } = await execAsync(outputDurationCmd, { timeout: 30000 });
     const outputDuration = parseFloat(outputDurationStr.trim());
     
+    // ============ Increment Usage Count ============
+    if (db && user) {
+      const today = new Date().toDateString();
+      await db.collection('users').updateOne(
+        { email: payload.email },
+        { 
+          $inc: { videosProcessedToday: 1 },
+          $set: { lastVideoDate: today }
+        }
+      );
+    }
+    
     // ============ SECURITY: Secure Cleanup ============
     await cleanup(inputPath, outputPath, detectPath, tempDir);
     
