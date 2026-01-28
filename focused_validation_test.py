@@ -7,7 +7,7 @@ import requests
 import time
 from io import BytesIO
 
-BASE_URL = "https://noiseless-video.preview.emergentagent.com"
+BASE_URL = "https://vidtrim-16.preview.emergentagent.com"
 
 def wait_for_rate_limit_reset():
     """Wait for rate limit to reset"""

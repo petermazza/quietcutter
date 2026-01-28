@@ -11,7 +11,7 @@ import os
 from io import BytesIO
 
 # Base URL from environment
-BASE_URL = "https://noiseless-video.preview.emergentagent.com"
+BASE_URL = "https://vidtrim-16.preview.emergentagent.com"
 
 def test_security_headers():
     """Test security headers on GET /"""
