@@ -93,26 +93,7 @@ export async function POST(request) {
         );
       }
     }
-    
-    // ============ SECURITY: Rate Limiting ============
-    const clientIP = getClientIP(request);
-    const rateLimitResult = rateLimit(clientIP, 5, 60000); // 5 requests per minute
-    
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { 
-          error: 'Rate limit exceeded. Please wait before processing more videos.',
-          retryAfter: Math.ceil(rateLimitResult.resetIn / 1000)
-        },
-        { 
-          status: 429,
-          headers: {
-            ...SECURITY_HEADERS,
-            'Retry-After': Math.ceil(rateLimitResult.resetIn / 1000).toString(),
-          }
-        }
-      );
-    }
+    // Note: For non-authenticated users, limit tracking is handled client-side via localStorage
 
     // ============ SECURITY: Parse and Validate Input ============
     const formData = await request.formData();
