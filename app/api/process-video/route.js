@@ -246,7 +246,6 @@ export async function POST(request) {
         for (let i = 0; i < segments.length; i++) {
           const seg = segments[i];
           const segFile = `${tempDir}/seg_${i.toString().padStart(4, '0')}.mp4`;
-          segmentFiles.push(segFile);
           
           const segDuration = (seg.end - seg.start).toFixed(3);
           
