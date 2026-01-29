@@ -223,29 +223,41 @@ export async function POST(request) {
         // Create temp directory for segments
         await mkdir(tempDir, { recursive: true });
         
-        // First, detect the video codec
-        let videoCodec = 'h264';
+        // First, detect video properties for better encoding
+        let videoCodec = 'unknown';
+        let audioCodec = 'unknown';
         try {
           const codecCmd = `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`;
           const { stdout: codecStr } = await execAsync(codecCmd, { timeout: 10000 });
           videoCodec = codecStr.trim().toLowerCase();
+          
+          const audioCmd = `ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`;
+          const { stdout: audioStr } = await execAsync(audioCmd, { timeout: 10000 });
+          audioCodec = audioStr.trim().toLowerCase();
         } catch (e) {
-          console.log('Could not detect codec, using default approach');
+          console.log('Could not detect codecs:', e.message);
         }
         
-        // Cut each segment
+        console.log(`Processing video - Video codec: ${videoCodec}, Audio codec: ${audioCodec}, Segments: ${segments.length}`);
+        
+        // Cut each segment with re-encoding for maximum compatibility
         const segmentFiles = [];
         for (let i = 0; i < segments.length; i++) {
           const seg = segments[i];
           const segFile = `${tempDir}/seg_${i.toString().padStart(4, '0')}.mp4`;
           segmentFiles.push(segFile);
           
-          // Re-encode to ensure compatibility (slower but more reliable)
-          // Use fast preset for speed
-          await execAsync(
-            `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c:v libx264 -preset fast -crf 18 -c:a aac -b:a 192k -y "${segFile}"`,
-            { maxBuffer: 50 * 1024 * 1024, timeout: 300000 }
-          );
+          // Re-encode with settings that ensure broad compatibility
+          // -pix_fmt yuv420p ensures compatibility with most players
+          // -movflags +faststart enables streaming
+          const ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k -ar 44100 -ac 2 -movflags +faststart -y "${segFile}"`;
+          
+          try {
+            await execAsync(ffmpegCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
+          } catch (segError) {
+            console.error(`Segment ${i} encoding failed:`, segError.message);
+            throw new Error(`Failed to process video segment ${i + 1}. The video format may not be supported.`);
+          }
         }
         
         // Create concat list file
@@ -255,10 +267,15 @@ export async function POST(request) {
         await writeFileFs(concatListPath, concatListContent);
         
         // Concat all segments using concat demuxer (more reliable)
-        await execAsync(
-          `ffmpeg -f concat -safe 0 -i "${concatListPath}" -c copy -y "${outputPath}"`,
-          { maxBuffer: 50 * 1024 * 1024, timeout: 300000 }
-        );
+        try {
+          await execAsync(
+            `ffmpeg -f concat -safe 0 -i "${concatListPath}" -c copy -movflags +faststart -y "${outputPath}"`,
+            { maxBuffer: 50 * 1024 * 1024, timeout: 300000 }
+          );
+        } catch (concatError) {
+          console.error('Concat failed:', concatError.message);
+          throw new Error('Failed to merge video segments.');
+        }
       }
     }
     
