@@ -323,10 +323,20 @@ export async function POST(request) {
     // Secure cleanup on error
     await cleanup(inputPath, outputPath, detectPath, tempDir);
     
-    // Don't expose internal error details to client
-    const safeErrorMessage = error.message?.includes('timeout') 
-      ? 'Processing timed out. Please try a shorter video.'
-      : 'Processing failed. Please try again with a different video.';
+    // Provide more specific error messages
+    let safeErrorMessage = 'Processing failed. Please try again with a different video.';
+    
+    if (error.message?.includes('timeout')) {
+      safeErrorMessage = 'Processing timed out. Please try a shorter video or check your connection.';
+    } else if (error.message?.includes('segment')) {
+      safeErrorMessage = 'Failed to process video. The video format may not be supported. Try converting to MP4 first.';
+    } else if (error.message?.includes('merge')) {
+      safeErrorMessage = 'Failed to merge video segments. Please try again.';
+    } else if (error.message?.includes('duration')) {
+      safeErrorMessage = 'Could not read video duration. The file may be corrupted.';
+    } else if (error.message?.includes('ffprobe') || error.message?.includes('ffmpeg')) {
+      safeErrorMessage = 'Video processing failed. Please ensure your video is a valid MP4, MOV, AVI, or MKV file.';
+    }
     
     return NextResponse.json(
       { error: safeErrorMessage },
