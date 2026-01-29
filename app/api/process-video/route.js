@@ -297,15 +297,15 @@ export async function POST(request) {
         
         console.log(`Concatenating ${segmentFiles.length} segments...`);
         
-        // Concat all segments using concat demuxer (more reliable)
+        // Concat all segments using concat demuxer (stream copy = low memory)
         try {
           await execAsync(
-            `ffmpeg -f concat -safe 0 -i "${concatListPath}" -c copy -movflags +faststart -y "${outputPath}"`,
-            { maxBuffer: 50 * 1024 * 1024, timeout: 300000 }
+            `ffmpeg -f concat -safe 0 -i "${concatListPath}" -c copy -y "${outputPath}"`,
+            { maxBuffer: 10 * 1024 * 1024, timeout: 120000 }
           );
           console.log('Concatenation successful');
         } catch (concatError) {
-          console.error('Concat failed:', concatError.stderr?.slice(-300) || concatError.message);
+          console.error('Concat failed:', concatError.stderr?.slice(-200) || concatError.message);
           throw new Error('Failed to merge video segments.');
         }
       }
