@@ -216,32 +216,48 @@ export async function POST(request) {
         segments.push({ start: lastEnd, end: duration });
       }
       
-      // Step 5: Use segment-based approach with stream copy (FAST!)
+      // Step 5: Use segment-based approach
       if (segments.length === 0) {
         await execAsync(`cp "${inputPath}" "${outputPath}"`);
       } else {
         // Create temp directory for segments
         await mkdir(tempDir, { recursive: true });
         
-        // Cut each segment with stream copy (no re-encoding = FAST)
+        // First, detect the video codec
+        let videoCodec = 'h264';
+        try {
+          const codecCmd = `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`;
+          const { stdout: codecStr } = await execAsync(codecCmd, { timeout: 10000 });
+          videoCodec = codecStr.trim().toLowerCase();
+        } catch (e) {
+          console.log('Could not detect codec, using default approach');
+        }
+        
+        // Cut each segment
         const segmentFiles = [];
         for (let i = 0; i < segments.length; i++) {
           const seg = segments[i];
-          const segFile = `${tempDir}/seg_${i.toString().padStart(4, '0')}.ts`;
+          const segFile = `${tempDir}/seg_${i.toString().padStart(4, '0')}.mp4`;
           segmentFiles.push(segFile);
           
-          // Use -c copy for speed, output to .ts for lossless concat
+          // Re-encode to ensure compatibility (slower but more reliable)
+          // Use fast preset for speed
           await execAsync(
-            `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c copy -bsf:v h264_mp4toannexb -f mpegts -y "${segFile}"`,
-            { maxBuffer: 10 * 1024 * 1024, timeout: 60000 }
+            `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c:v libx264 -preset fast -crf 18 -c:a aac -b:a 192k -y "${segFile}"`,
+            { maxBuffer: 50 * 1024 * 1024, timeout: 300000 }
           );
         }
         
-        // Concat all segments
-        const concatList = segmentFiles.map(f => `"${f}"`).join('|');
+        // Create concat list file
+        const concatListPath = `${tempDir}/concat_list.txt`;
+        const concatListContent = segmentFiles.map(f => `file '${f}'`).join('\n');
+        const { writeFile: writeFileFs } = await import('fs/promises');
+        await writeFileFs(concatListPath, concatListContent);
+        
+        // Concat all segments using concat demuxer (more reliable)
         await execAsync(
-          `ffmpeg -i "concat:${concatList}" -c copy -bsf:a aac_adtstoasc -y "${outputPath}"`,
-          { maxBuffer: 50 * 1024 * 1024, timeout: 120000 }
+          `ffmpeg -f concat -safe 0 -i "${concatListPath}" -c copy -y "${outputPath}"`,
+          { maxBuffer: 50 * 1024 * 1024, timeout: 300000 }
         );
       }
     }
