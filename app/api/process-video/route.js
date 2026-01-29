@@ -297,14 +297,13 @@ export async function POST(request) {
           segmentFiles.push(segFile);
         }
         
-        // Remove duplicates from segmentFiles (we pushed twice by mistake)
-        const uniqueSegmentFiles = [...new Set(segmentFiles)];
-        
         // Create concat list file
         const concatListPath = `${tempDir}/concat_list.txt`;
         const concatListContent = segmentFiles.map(f => `file '${f}'`).join('\n');
         const { writeFile: writeFileFs } = await import('fs/promises');
         await writeFileFs(concatListPath, concatListContent);
+        
+        console.log(`Concatenating ${segmentFiles.length} segments...`);
         
         // Concat all segments using concat demuxer (more reliable)
         try {
@@ -312,8 +311,9 @@ export async function POST(request) {
             `ffmpeg -f concat -safe 0 -i "${concatListPath}" -c copy -movflags +faststart -y "${outputPath}"`,
             { maxBuffer: 50 * 1024 * 1024, timeout: 300000 }
           );
+          console.log('Concatenation successful');
         } catch (concatError) {
-          console.error('Concat failed:', concatError.message);
+          console.error('Concat failed:', concatError.stderr?.slice(-300) || concatError.message);
           throw new Error('Failed to merge video segments.');
         }
       }
