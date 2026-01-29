@@ -241,7 +241,7 @@ export async function POST(request) {
         
         console.log(`Processing video - Video codec: ${videoCodec}, Has audio: ${hasAudio}, Segments: ${segments.length}`);
         
-        // Cut each segment with re-encoding for maximum compatibility
+        // Cut each segment - try stream copy first (fast, low memory), then re-encode if needed
         const segmentFiles = [];
         for (let i = 0; i < segments.length; i++) {
           const seg = segments[i];
@@ -249,47 +249,40 @@ export async function POST(request) {
           
           const segDuration = (seg.end - seg.start).toFixed(3);
           
-          // Try encoding with full options first, fallback to simpler if it fails
           let encoded = false;
           
-          // Attempt 1: Full encoding with audio handling
+          // Attempt 1: Stream copy (FAST, NO MEMORY USAGE) - best for most videos
           try {
-            let ffmpegCmd;
-            if (hasAudio) {
-              ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k -ar 44100 -movflags +faststart -y "${segFile}"`;
-            } else {
-              // No audio - encode video only with silent audio
-              ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -f lavfi -t ${segDuration} -i anullsrc=channel_layout=stereo:sample_rate=44100 -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 128k -map 0:v:0 -map 1:a:0 -shortest -movflags +faststart -y "${segFile}"`;
-            }
-            await execAsync(ffmpegCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
-            console.log(`Segment ${i} encoded successfully (attempt 1)`);
+            const copyCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -c copy -avoid_negative_ts make_zero -y "${segFile}"`;
+            await execAsync(copyCmd, { maxBuffer: 10 * 1024 * 1024, timeout: 60000 });
+            console.log(`Segment ${i} copied successfully (stream copy)`);
             encoded = true;
           } catch (err1) {
-            console.error(`Segment ${i} attempt 1 failed:`, err1.stderr?.slice(-300) || err1.message);
+            console.error(`Segment ${i} stream copy failed:`, err1.stderr?.slice(-200) || err1.message);
           }
           
-          // Attempt 2: Simpler encoding without audio options
+          // Attempt 2: Ultra-light re-encoding (minimal memory)
           if (!encoded) {
             try {
-              const simpleCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -an -movflags +faststart -y "${segFile}"`;
-              await execAsync(simpleCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
-              console.log(`Segment ${i} encoded successfully (attempt 2 - no audio)`);
+              const lightCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -c:v libx264 -preset ultrafast -crf 23 -threads 1 -c:a copy -y "${segFile}"`;
+              await execAsync(lightCmd, { maxBuffer: 10 * 1024 * 1024, timeout: 120000 });
+              console.log(`Segment ${i} encoded (ultrafast)`);
               encoded = true;
             } catch (err2) {
-              console.error(`Segment ${i} attempt 2 failed:`, err2.stderr?.slice(-300) || err2.message);
+              console.error(`Segment ${i} ultrafast failed:`, err2.stderr?.slice(-200) || err2.message);
             }
           }
           
-          // Attempt 3: Most basic encoding
+          // Attempt 3: Minimal video-only encoding
           if (!encoded) {
             try {
-              const basicCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -vcodec libx264 -acodec aac -y "${segFile}"`;
-              await execAsync(basicCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
-              console.log(`Segment ${i} encoded successfully (attempt 3 - basic)`);
+              const minimalCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -c:v libx264 -preset ultrafast -crf 28 -threads 1 -an -y "${segFile}"`;
+              await execAsync(minimalCmd, { maxBuffer: 10 * 1024 * 1024, timeout: 120000 });
+              console.log(`Segment ${i} encoded (minimal, no audio)`);
               encoded = true;
             } catch (err3) {
-              console.error(`Segment ${i} attempt 3 failed:`, err3.stderr?.slice(-300) || err3.message);
-              throw new Error(`Failed to process video segment ${i + 1}. Please try a different video format.`);
+              console.error(`Segment ${i} minimal failed:`, err3.stderr?.slice(-200) || err3.message);
+              throw new Error(`Failed to process segment ${i + 1}. Server may be low on resources.`);
             }
           }
           
