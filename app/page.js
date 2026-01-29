@@ -1361,6 +1361,22 @@ export default function VideoSilenceRemover() {
                         Right-click the video and select "Download Video" or "Save Video As..."
                       </p>
                     </div>
+                    
+                    {/* Always Allow Downloads Tip */}
+                    <details className="mt-3 text-xs">
+                      <summary className="text-cyan-400 cursor-pointer hover:text-cyan-300 transition-colors">
+                        💡 Tip: Enable automatic downloads
+                      </summary>
+                      <div className="mt-2 p-3 bg-slate-900/50 rounded-lg text-slate-400 space-y-2">
+                        <p className="font-medium text-slate-300">To skip download prompts in the future:</p>
+                        <div className="space-y-1.5">
+                          <p><span className="text-slate-300">Chrome:</span> Click the lock icon in the address bar → Site settings → Automatic downloads → Allow</p>
+                          <p><span className="text-slate-300">Safari:</span> Safari → Settings → Websites → Downloads → quietcutter.com → Allow</p>
+                          <p><span className="text-slate-300">Firefox:</span> Click the lock icon → Connection secure → More information → Permissions → uncheck "Always ask"</p>
+                          <p><span className="text-slate-300">Edge:</span> Click the lock icon → Site permissions → Automatic downloads → Allow</p>
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 )}
               </div>
