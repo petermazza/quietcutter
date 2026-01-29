@@ -250,27 +250,55 @@ export async function POST(request) {
           
           const segDuration = (seg.end - seg.start).toFixed(3);
           
-          // Build FFmpeg command based on whether audio exists
-          // -pix_fmt yuv420p ensures compatibility with most players
-          // -vsync cfr converts variable framerate to constant (important for screen recordings)
-          // -movflags +faststart enables streaming
-          let ffmpegCmd;
-          if (hasAudio) {
-            ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -vsync cfr -r 30 -c:a aac -b:a 192k -ar 44100 -ac 2 -movflags +faststart -y "${segFile}"`;
-          } else {
-            // No audio - encode video only, then add silent audio track
-            ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -f lavfi -t ${segDuration} -i anullsrc=channel_layout=stereo:sample_rate=44100 -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -vsync cfr -r 30 -c:a aac -b:a 128k -map 0:v:0 -map 1:a:0 -shortest -movflags +faststart -y "${segFile}"`;
+          // Try encoding with full options first, fallback to simpler if it fails
+          let encoded = false;
+          
+          // Attempt 1: Full encoding with audio handling
+          try {
+            let ffmpegCmd;
+            if (hasAudio) {
+              ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k -ar 44100 -movflags +faststart -y "${segFile}"`;
+            } else {
+              // No audio - encode video only with silent audio
+              ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -f lavfi -t ${segDuration} -i anullsrc=channel_layout=stereo:sample_rate=44100 -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 128k -map 0:v:0 -map 1:a:0 -shortest -movflags +faststart -y "${segFile}"`;
+            }
+            await execAsync(ffmpegCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
+            console.log(`Segment ${i} encoded successfully (attempt 1)`);
+            encoded = true;
+          } catch (err1) {
+            console.error(`Segment ${i} attempt 1 failed:`, err1.stderr?.slice(-300) || err1.message);
           }
           
-          try {
-            const { stdout, stderr } = await execAsync(ffmpegCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
-            console.log(`Segment ${i} encoded successfully`);
-          } catch (segError) {
-            console.error(`Segment ${i} encoding failed:`, segError.message);
-            console.error(`Segment ${i} stderr:`, segError.stderr?.slice(-500));
-            throw new Error(`Failed to process video segment ${i + 1}. The video format may not be supported.`);
+          // Attempt 2: Simpler encoding without audio options
+          if (!encoded) {
+            try {
+              const simpleCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -an -movflags +faststart -y "${segFile}"`;
+              await execAsync(simpleCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
+              console.log(`Segment ${i} encoded successfully (attempt 2 - no audio)`);
+              encoded = true;
+            } catch (err2) {
+              console.error(`Segment ${i} attempt 2 failed:`, err2.stderr?.slice(-300) || err2.message);
+            }
           }
+          
+          // Attempt 3: Most basic encoding
+          if (!encoded) {
+            try {
+              const basicCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -vcodec libx264 -acodec aac -y "${segFile}"`;
+              await execAsync(basicCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
+              console.log(`Segment ${i} encoded successfully (attempt 3 - basic)`);
+              encoded = true;
+            } catch (err3) {
+              console.error(`Segment ${i} attempt 3 failed:`, err3.stderr?.slice(-300) || err3.message);
+              throw new Error(`Failed to process video segment ${i + 1}. Please try a different video format.`);
+            }
+          }
+          
+          segmentFiles.push(segFile);
         }
+        
+        // Remove duplicates from segmentFiles (we pushed twice by mistake)
+        const uniqueSegmentFiles = [...new Set(segmentFiles)];
         
         // Create concat list file
         const concatListPath = `${tempDir}/concat_list.txt`;
