@@ -248,22 +248,26 @@ export async function POST(request) {
           const segFile = `${tempDir}/seg_${i.toString().padStart(4, '0')}.mp4`;
           segmentFiles.push(segFile);
           
+          const segDuration = (seg.end - seg.start).toFixed(3);
+          
           // Build FFmpeg command based on whether audio exists
           // -pix_fmt yuv420p ensures compatibility with most players
           // -vsync cfr converts variable framerate to constant (important for screen recordings)
           // -movflags +faststart enables streaming
           let ffmpegCmd;
           if (hasAudio) {
-            ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -vsync cfr -r 30 -c:a aac -b:a 192k -ar 44100 -ac 2 -movflags +faststart -y "${segFile}"`;
+            ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -vsync cfr -r 30 -c:a aac -b:a 192k -ar 44100 -ac 2 -movflags +faststart -y "${segFile}"`;
           } else {
-            // No audio - create silent audio track for compatibility
-            ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -vsync cfr -r 30 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -shortest -c:a aac -b:a 128k -movflags +faststart -y "${segFile}"`;
+            // No audio - encode video only, then add silent audio track
+            ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -f lavfi -t ${segDuration} -i anullsrc=channel_layout=stereo:sample_rate=44100 -t ${segDuration} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -vsync cfr -r 30 -c:a aac -b:a 128k -map 0:v:0 -map 1:a:0 -shortest -movflags +faststart -y "${segFile}"`;
           }
           
           try {
-            await execAsync(ffmpegCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
+            const { stdout, stderr } = await execAsync(ffmpegCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
+            console.log(`Segment ${i} encoded successfully`);
           } catch (segError) {
-            console.error(`Segment ${i} encoding failed:`, segError.message, segError.stderr);
+            console.error(`Segment ${i} encoding failed:`, segError.message);
+            console.error(`Segment ${i} stderr:`, segError.stderr?.slice(-500));
             throw new Error(`Failed to process video segment ${i + 1}. The video format may not be supported.`);
           }
         }
