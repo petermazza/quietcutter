@@ -223,22 +223,23 @@ export async function POST(request) {
         // Create temp directory for segments
         await mkdir(tempDir, { recursive: true });
         
-        // First, detect video properties for better encoding
+        // Detect video properties for better encoding
         let videoCodec = 'unknown';
-        let audioCodec = 'unknown';
+        let hasAudio = false;
         try {
           const codecCmd = `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`;
           const { stdout: codecStr } = await execAsync(codecCmd, { timeout: 10000 });
           videoCodec = codecStr.trim().toLowerCase();
           
-          const audioCmd = `ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`;
-          const { stdout: audioStr } = await execAsync(audioCmd, { timeout: 10000 });
-          audioCodec = audioStr.trim().toLowerCase();
+          // Check if audio stream exists
+          const audioCheckCmd = `ffprobe -v error -select_streams a -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`;
+          const { stdout: audioStr } = await execAsync(audioCheckCmd, { timeout: 10000 });
+          hasAudio = audioStr.trim().length > 0;
         } catch (e) {
           console.log('Could not detect codecs:', e.message);
         }
         
-        console.log(`Processing video - Video codec: ${videoCodec}, Audio codec: ${audioCodec}, Segments: ${segments.length}`);
+        console.log(`Processing video - Video codec: ${videoCodec}, Has audio: ${hasAudio}, Segments: ${segments.length}`);
         
         // Cut each segment with re-encoding for maximum compatibility
         const segmentFiles = [];
@@ -247,15 +248,22 @@ export async function POST(request) {
           const segFile = `${tempDir}/seg_${i.toString().padStart(4, '0')}.mp4`;
           segmentFiles.push(segFile);
           
-          // Re-encode with settings that ensure broad compatibility
+          // Build FFmpeg command based on whether audio exists
           // -pix_fmt yuv420p ensures compatibility with most players
+          // -vsync cfr converts variable framerate to constant (important for screen recordings)
           // -movflags +faststart enables streaming
-          const ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k -ar 44100 -ac 2 -movflags +faststart -y "${segFile}"`;
+          let ffmpegCmd;
+          if (hasAudio) {
+            ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -vsync cfr -r 30 -c:a aac -b:a 192k -ar 44100 -ac 2 -movflags +faststart -y "${segFile}"`;
+          } else {
+            // No audio - create silent audio track for compatibility
+            ffmpegCmd = `ffmpeg -ss ${seg.start.toFixed(3)} -i "${inputPath}" -t ${(seg.end - seg.start).toFixed(3)} -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -vsync cfr -r 30 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -shortest -c:a aac -b:a 128k -movflags +faststart -y "${segFile}"`;
+          }
           
           try {
             await execAsync(ffmpegCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 300000 });
           } catch (segError) {
-            console.error(`Segment ${i} encoding failed:`, segError.message);
+            console.error(`Segment ${i} encoding failed:`, segError.message, segError.stderr);
             throw new Error(`Failed to process video segment ${i + 1}. The video format may not be supported.`);
           }
         }
