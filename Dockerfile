@@ -1,8 +1,11 @@
 # Use Node.js base image
 FROM node:20-slim
 
-# Install FFmpeg
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+# Install FFmpeg with all codecs
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libavcodec-extra \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
