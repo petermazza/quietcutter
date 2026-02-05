@@ -50,6 +50,17 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/projects/favorites", async (req, res) => {
+    try {
+      const userId = (req as any).user?.claims?.sub || null;
+      const projects = await storage.getFavorites(userId);
+      res.json(projects);
+    } catch (err) {
+      console.error("Error fetching favorites:", err);
+      res.status(500).json({ message: "Failed to fetch favorites" });
+    }
+  });
+
   app.get(api.projects.get.path, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
@@ -182,17 +193,6 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error updating favorite:", err);
       res.status(500).json({ message: "Failed to update favorite" });
-    }
-  });
-
-  app.get("/api/projects/favorites", async (req, res) => {
-    try {
-      const userId = (req as any).user?.claims?.sub || null;
-      const projects = await storage.getFavorites(userId);
-      res.json(projects);
-    } catch (err) {
-      console.error("Error fetching favorites:", err);
-      res.status(500).json({ message: "Failed to fetch favorites" });
     }
   });
 
