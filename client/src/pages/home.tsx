@@ -143,6 +143,54 @@ export default function Home() {
     window.open(`/api/projects/${projectId}/download`, "_blank");
   };
 
+  const handleUpgrade = async () => {
+    try {
+      const productsRes = await fetch("/api/stripe/products");
+      const productsData = await productsRes.json();
+      
+      if (!productsData.data || productsData.data.length === 0) {
+        toast({
+          title: "Coming Soon",
+          description: "Pro subscription will be available soon!",
+        });
+        return;
+      }
+      
+      const product = productsData.data[0];
+      const monthlyPrice = product.prices?.find((p: any) => p.recurring?.interval === "month");
+      
+      if (!monthlyPrice) {
+        toast({
+          title: "Error",
+          description: "No pricing available. Please try again later.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const checkoutRes = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId: monthlyPrice.id }),
+        credentials: "include",
+      });
+      
+      const checkoutData = await checkoutRes.json();
+      
+      if (checkoutData.url) {
+        window.location.href = checkoutData.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to start checkout. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
@@ -204,7 +252,7 @@ export default function Home() {
         )}
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{projects?.length || 0}/3 projects today</span>
-          <Button size="sm" className="rounded-full gap-2 bg-gradient-to-r from-blue-500 to-purple-500" data-testid="button-upgrade">
+          <Button size="sm" className="rounded-full gap-2 bg-gradient-to-r from-blue-500 to-purple-500" onClick={handleUpgrade} data-testid="button-upgrade">
             <Star className="w-3 h-3" />
             Upgrade to Pro
           </Button>

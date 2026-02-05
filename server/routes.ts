@@ -7,6 +7,8 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { stripeService } from "./stripeService";
+import { getStripePublishableKey } from "./stripeClient";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -209,6 +211,84 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error saving contact message:", err);
       res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.get("/api/stripe/publishable-key", async (req, res) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (err) {
+      console.error("Error getting publishable key:", err);
+      res.status(500).json({ message: "Failed to get Stripe key" });
+    }
+  });
+
+  app.get("/api/stripe/products", async (req, res) => {
+    try {
+      const products = await stripeService.listProductsWithPrices();
+      
+      const productsMap = new Map();
+      for (const row of products as any[]) {
+        if (!productsMap.has(row.product_id)) {
+          productsMap.set(row.product_id, {
+            id: row.product_id,
+            name: row.product_name,
+            description: row.product_description,
+            active: row.product_active,
+            metadata: row.product_metadata,
+            prices: []
+          });
+        }
+        if (row.price_id) {
+          productsMap.get(row.product_id).prices.push({
+            id: row.price_id,
+            unit_amount: row.unit_amount,
+            currency: row.currency,
+            recurring: row.recurring,
+            active: row.price_active,
+          });
+        }
+      }
+
+      res.json({ data: Array.from(productsMap.values()) });
+    } catch (err) {
+      console.error("Error fetching products:", err);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.post("/api/stripe/checkout", async (req, res) => {
+    try {
+      const { priceId } = req.body;
+      const user = (req as any).user;
+      
+      if (!priceId) {
+        return res.status(400).json({ message: "Price ID is required" });
+      }
+      
+      let customerId: string;
+      
+      if (user?.claims?.email) {
+        const customer = await stripeService.createCustomer(user.claims.email, user.claims.sub);
+        customerId = customer.id;
+      } else {
+        const customer = await stripeService.createCustomer("guest@quietcutter.com", "guest");
+        customerId = customer.id;
+      }
+      
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const session = await stripeService.createCheckoutSession(
+        customerId,
+        priceId,
+        `${baseUrl}/?success=true`,
+        `${baseUrl}/?canceled=true`
+      );
+
+      res.json({ url: session.url });
+    } catch (err) {
+      console.error("Error creating checkout session:", err);
+      res.status(500).json({ message: "Failed to create checkout session" });
     }
   });
 
