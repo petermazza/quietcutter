@@ -44,7 +44,8 @@ export async function registerRoutes(
 
   app.get(api.projects.list.path, async (req, res) => {
     try {
-      const projects = await storage.getProjects();
+      const userId = (req as any).user?.claims?.sub || null;
+      const projects = await storage.getProjects(userId);
       res.json(projects);
     } catch (err) {
       console.error("Error fetching projects:", err);
@@ -123,10 +124,18 @@ export async function registerRoutes(
   app.delete(api.projects.delete.path, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const deleted = await storage.deleteProject(id);
-      if (!deleted) {
+      const userId = (req as any).user?.claims?.sub || null;
+      
+      const project = await storage.getProject(id);
+      if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
+      
+      if (project.userId && project.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const deleted = await storage.deleteProject(id);
       res.status(204).send();
     } catch (err) {
       console.error("Error deleting project:", err);
@@ -164,10 +173,15 @@ export async function registerRoutes(
   app.get("/api/projects/:id/download", async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      const userId = (req as any).user?.claims?.sub || null;
       const project = await storage.getProject(id);
       
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
+      }
+      
+      if (project.userId && project.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
       }
       
       if (!project.processedFilePath || !fs.existsSync(project.processedFilePath)) {
@@ -184,13 +198,19 @@ export async function registerRoutes(
   app.patch("/api/projects/:id/favorite", async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      const userId = (req as any).user?.claims?.sub || null;
       const { isFavorite } = req.body;
-      const project = await storage.updateProject(id, { isFavorite });
       
-      if (!project) {
+      const existingProject = await storage.getProject(id);
+      if (!existingProject) {
         return res.status(404).json({ message: "Project not found" });
       }
       
+      if (existingProject.userId && existingProject.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const project = await storage.updateProject(id, { isFavorite });
       res.json(project);
     } catch (err) {
       console.error("Error updating favorite:", err);

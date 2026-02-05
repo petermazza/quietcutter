@@ -28,6 +28,11 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getProjects(userId?: string | null): Promise<Project[]> {
+    if (userId) {
+      return await db.select().from(projects)
+        .where(eq(projects.userId, userId))
+        .orderBy(desc(projects.createdAt));
+    }
     return await db.select().from(projects).orderBy(desc(projects.createdAt));
   }
 
@@ -70,6 +75,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFavorites(userId?: string | null): Promise<Project[]> {
+    if (userId) {
+      return await db.select().from(projects)
+        .where(and(eq(projects.isFavorite, true), eq(projects.userId, userId)))
+        .orderBy(desc(projects.createdAt));
+    }
     return await db.select().from(projects)
       .where(eq(projects.isFavorite, true))
       .orderBy(desc(projects.createdAt));
