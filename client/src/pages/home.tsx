@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, History, Star } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, History, Star, Download, Trash2, Loader2, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import type { ProjectResponse } from "@shared/routes";
 import logoImage from "@assets/transparent_output_1770321954939.png";
 
@@ -19,34 +21,44 @@ const presets = [
 
 export default function Home() {
   const { toast } = useToast();
-  const [silenceThreshold, setSilenceThreshold] = useState(-30);
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const [silenceThreshold, setSilenceThreshold] = useState(-40);
   const [minSilenceDuration, setMinSilenceDuration] = useState(0.5);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [showCustomSettings, setShowCustomSettings] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showFavorites, setShowFavorites] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: projects } = useQuery<ProjectResponse[]>({
+  const { data: projects, refetch: refetchProjects } = useQuery<ProjectResponse[]>({
     queryKey: ["/api/projects"],
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: { name: string; originalFileName: string; silenceThreshold: number; minSilenceDuration: number }) => {
-      const res = await apiRequest("POST", "/api/projects", data);
+  const { data: favorites } = useQuery<ProjectResponse[]>({
+    queryKey: ["/api/projects/favorites"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/projects/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/favorites"] });
+      toast({ title: "Project deleted" });
+    },
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: async ({ id, isFavorite }: { id: number; isFavorite: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/projects/${id}/favorite`, { isFavorite });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      toast({
-        title: "Project created",
-        description: "Your audio file has been added to the processing queue.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to create project.",
-        variant: "destructive",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/favorites"] });
     },
   });
 
@@ -56,14 +68,50 @@ export default function Home() {
     setMinSilenceDuration(preset.duration / 1000);
   };
 
-  const handleFileUpload = (file: File) => {
-    const name = file.name.replace(/\.[^/.]+$/, "");
-    createMutation.mutate({
-      name: name,
-      originalFileName: file.name,
-      silenceThreshold: silenceThreshold,
-      minSilenceDuration: Math.round(minSilenceDuration * 1000),
-    });
+  const handleFileUpload = async (file: File) => {
+    setIsUploading(true);
+    
+    const formData = new FormData();
+    formData.append("audio", file);
+    formData.append("silenceThreshold", silenceThreshold.toString());
+    formData.append("minSilenceDuration", Math.round(minSilenceDuration * 1000).toString());
+    
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
+      
+      toast({
+        title: "Upload successful",
+        description: "Your audio file is being processed. This may take a few minutes.",
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      
+      const pollInterval = setInterval(async () => {
+        await refetchProjects();
+        const updatedProjects = queryClient.getQueryData<ProjectResponse[]>(["/api/projects"]);
+        const processing = updatedProjects?.some(p => p.status === "processing" || p.status === "pending");
+        if (!processing) {
+          clearInterval(pollInterval);
+        }
+      }, 3000);
+      
+    } catch (err) {
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading your file.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -91,6 +139,25 @@ export default function Home() {
     }
   };
 
+  const handleDownload = (projectId: number) => {
+    window.open(`/api/projects/${projectId}/download`, "_blank");
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Completed</Badge>;
+      case "processing":
+        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Processing</Badge>;
+      case "failed":
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Failed</Badge>;
+      default:
+        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Pending</Badge>;
+    }
+  };
+
+  const displayProjects = showFavorites ? favorites : projects;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/50">
@@ -113,11 +180,30 @@ export default function Home() {
       </header>
 
       <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
-        <Button variant="outline" size="sm" className="rounded-full gap-2" data-testid="button-sign-in">
-          <span className="text-xs">Sign in</span>
-        </Button>
+        {authLoading ? (
+          <div className="w-20" />
+        ) : isAuthenticated ? (
+          <div className="flex items-center gap-3">
+            {user?.profileImageUrl && (
+              <img src={user.profileImageUrl} alt="" className="w-8 h-8 rounded-full" />
+            )}
+            <span className="text-sm text-muted-foreground">{user?.firstName || user?.email}</span>
+            <a href="/api/logout">
+              <Button variant="ghost" size="sm" className="gap-2" data-testid="button-logout">
+                <LogOut className="w-4 h-4" />
+                Sign out
+              </Button>
+            </a>
+          </div>
+        ) : (
+          <a href="/api/login">
+            <Button variant="outline" size="sm" className="rounded-full gap-2" data-testid="button-sign-in">
+              <span className="text-xs">Sign in</span>
+            </Button>
+          </a>
+        )}
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">{projects?.length || 0}/{3} videos today</span>
+          <span className="text-sm text-muted-foreground">{projects?.length || 0}/3 projects today</span>
           <Button size="sm" className="rounded-full gap-2 bg-gradient-to-r from-blue-500 to-purple-500" data-testid="button-upgrade">
             <Star className="w-3 h-3" />
             Upgrade to Pro
@@ -139,45 +225,117 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center gap-2 mb-8">
-          <Button variant="outline" size="sm" className="rounded-full gap-2" data-testid="button-history">
+          <Button 
+            variant={showHistory ? "default" : "outline"} 
+            size="sm" 
+            className="rounded-full gap-2" 
+            onClick={() => { setShowHistory(!showHistory); setShowFavorites(false); }}
+            data-testid="button-history"
+          >
             <History className="w-4 h-4" />
             History
           </Button>
-          <Button variant="outline" size="sm" className="rounded-full gap-2" data-testid="button-saved">
+          <Button 
+            variant={showFavorites ? "default" : "outline"} 
+            size="sm" 
+            className="rounded-full gap-2" 
+            onClick={() => { setShowFavorites(!showFavorites); setShowHistory(false); }}
+            data-testid="button-saved"
+          >
             <Star className="w-4 h-4" />
             Saved
           </Button>
         </div>
 
+        {(showHistory || showFavorites) && (
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <h3 className="font-semibold mb-3">{showFavorites ? "Saved Projects" : "Recent Projects"}</h3>
+              {displayProjects && displayProjects.length > 0 ? (
+                <div className="space-y-3">
+                  {displayProjects.map((project) => (
+                    <div key={project.id} className="flex items-center justify-between gap-4 p-3 rounded-lg bg-background/50 border border-border/50" data-testid={`project-item-${project.id}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{project.name}</p>
+                        <p className="text-xs text-muted-foreground">{project.originalFileName}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(project.status)}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => favoriteMutation.mutate({ id: project.id, isFavorite: !project.isFavorite })}
+                          data-testid={`button-favorite-${project.id}`}
+                        >
+                          <Star className={`w-4 h-4 ${project.isFavorite ? "fill-yellow-400 text-yellow-400" : ""}`} />
+                        </Button>
+                        {project.status === "completed" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDownload(project.id)}
+                            data-testid={`button-download-${project.id}`}
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteMutation.mutate(project.id)}
+                          data-testid={`button-delete-${project.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No projects yet</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="mb-6">
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-1">Upload Video</h2>
-            <p className="text-sm text-muted-foreground mb-4">Drag and drop your video file or click to browse</p>
+            <h2 className="font-semibold mb-1">Upload Audio</h2>
+            <p className="text-sm text-muted-foreground mb-4">Drag and drop your audio file or click to browse</p>
             
             <div
               className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer ${
                 isDragging ? "border-primary bg-primary/5" : "border-border"
-              }`}
+              } ${isUploading ? "pointer-events-none opacity-50" : ""}`}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
-              onClick={() => document.getElementById("file-input")?.click()}
+              onClick={() => fileInputRef.current?.click()}
               data-testid="dropzone-upload"
             >
               <input
-                id="file-input"
+                ref={fileInputRef}
                 type="file"
-                accept=".mp4,.avi,.mov,.mkv,.mp3,.wav,.m4a"
+                accept=".mp3,.wav,.ogg,.flac,.m4a"
                 className="hidden"
                 onChange={handleFileInputChange}
                 data-testid="input-file"
               />
-              <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-sm">
-                <span className="text-primary cursor-pointer">Click to upload</span>
-                {" "}or drag and drop
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">MP4, AVI, MOV, MKV supported</p>
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin" />
+                  <p className="text-sm">Uploading and processing...</p>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-sm">
+                    <span className="text-primary cursor-pointer">Click to upload</span>
+                    {" "}or drag and drop
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">MP3, WAV, OGG, FLAC, M4A supported (max 500MB)</p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -261,14 +419,9 @@ export default function Home() {
           </Card>
         )}
 
-        <Button 
-          className="w-full" 
-          size="lg"
-          disabled={createMutation.isPending}
-          data-testid="button-remove-silence"
-        >
-          {createMutation.isPending ? "Processing..." : "Remove Silence"}
-        </Button>
+        <p className="text-center text-sm text-muted-foreground mt-8">
+          Upload an audio file above to automatically remove silence using your selected settings.
+        </p>
       </main>
     </div>
   );

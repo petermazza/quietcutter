@@ -17,15 +17,38 @@ export default function Contact() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      subject: formData.get("subject") as string,
+      message: formData.get("message") as string,
+    };
     
-    toast({
-      title: "Message sent",
-      description: "Thanks for reaching out! We'll get back to you soon.",
-    });
-    
-    setIsSubmitting(false);
-    (e.target as HTMLFormElement).reset();
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      
+      if (!res.ok) throw new Error("Failed to send message");
+      
+      toast({
+        title: "Message sent",
+        description: "Thanks for reaching out! We'll get back to you soon.",
+      });
+      
+      (e.target as HTMLFormElement).reset();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -104,7 +127,8 @@ export default function Contact() {
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
                   <Input 
-                    id="name" 
+                    id="name"
+                    name="name"
                     placeholder="Your name" 
                     required 
                     data-testid="input-name"
@@ -113,7 +137,8 @@ export default function Contact() {
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input 
-                    id="email" 
+                    id="email"
+                    name="email"
                     type="email" 
                     placeholder="your@email.com" 
                     required 
@@ -124,7 +149,8 @@ export default function Contact() {
               <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
                 <Input 
-                  id="subject" 
+                  id="subject"
+                  name="subject"
                   placeholder="What's this about?" 
                   required 
                   data-testid="input-subject"
@@ -133,7 +159,8 @@ export default function Contact() {
               <div className="space-y-2">
                 <Label htmlFor="message">Message</Label>
                 <Textarea 
-                  id="message" 
+                  id="message"
+                  name="message"
                   placeholder="Tell us more..." 
                   rows={5} 
                   required 

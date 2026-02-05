@@ -79,21 +79,23 @@ export default function Blog() {
 
         <div className="grid gap-6">
           {blogPosts.map((post) => (
-            <Card key={post.id} className="bg-card/50 border-border/50 hover-elevate cursor-pointer" data-testid={`card-blog-${post.id}`}>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-4 mb-2">
-                  <Badge variant="secondary" className="text-xs">{post.category}</Badge>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(post.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            <Link key={post.id} href={`/blog/${post.id}`}>
+              <Card className="bg-card/50 border-border/50 hover-elevate cursor-pointer" data-testid={`card-blog-${post.id}`}>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-4 mb-2">
+                    <Badge variant="secondary" className="text-xs">{post.category}</Badge>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(post.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
                   </div>
-                </div>
-                <CardTitle className="text-xl">{post.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">{post.excerpt}</p>
-              </CardContent>
-            </Card>
+                  <CardTitle className="text-xl">{post.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">{post.excerpt}</p>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       </main>
