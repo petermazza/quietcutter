@@ -14,36 +14,30 @@ export const errorSchemas = {
   }),
 };
 
+const projectResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  originalFileName: z.string(),
+  status: z.string(),
+  silenceThreshold: z.number(),
+  minSilenceDuration: z.number(),
+  createdAt: z.string().nullable(),
+});
+
 export const api = {
   projects: {
     list: {
       method: 'GET' as const,
       path: '/api/projects',
       responses: {
-        200: z.array(z.object({
-          id: z.number(),
-          name: z.string(),
-          originalFileName: z.string(),
-          status: z.string(),
-          silenceThreshold: z.number(),
-          minSilenceDuration: z.number(),
-          createdAt: z.date().nullable(),
-        })),
+        200: z.array(projectResponseSchema),
       },
     },
     get: {
       method: 'GET' as const,
       path: '/api/projects/:id',
       responses: {
-        200: z.object({
-          id: z.number(),
-          name: z.string(),
-          originalFileName: z.string(),
-          status: z.string(),
-          silenceThreshold: z.number(),
-          minSilenceDuration: z.number(),
-          createdAt: z.date().nullable(),
-        }),
+        200: projectResponseSchema,
         404: errorSchemas.notFound,
       },
     },
@@ -52,32 +46,16 @@ export const api = {
       path: '/api/projects',
       input: insertProjectSchema,
       responses: {
-        201: z.object({
-          id: z.number(),
-          name: z.string(),
-          originalFileName: z.string(),
-          status: z.string(),
-          silenceThreshold: z.number(),
-          minSilenceDuration: z.number(),
-          createdAt: z.date().nullable(),
-        }),
+        201: projectResponseSchema,
         400: errorSchemas.validation,
       },
     },
     update: {
-      method: 'PUT' as const,
+      method: 'PATCH' as const,
       path: '/api/projects/:id',
       input: insertProjectSchema.partial(),
       responses: {
-        200: z.object({
-          id: z.number(),
-          name: z.string(),
-          originalFileName: z.string(),
-          status: z.string(),
-          silenceThreshold: z.number(),
-          minSilenceDuration: z.number(),
-          createdAt: z.date().nullable(),
-        }),
+        200: projectResponseSchema,
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
       },

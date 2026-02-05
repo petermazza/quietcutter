@@ -55,7 +55,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.projects.update.path, async (req, res) => {
+  app.patch(api.projects.update.path, async (req, res) => {
     try {
       const id = parseInt(req.params.id, 10);
       const input = api.projects.update.input.parse(req.body);

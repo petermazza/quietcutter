@@ -23,16 +23,15 @@ export default function Home() {
 
   const createMutation = useMutation({
     mutationFn: async (data: { name: string; originalFileName: string; silenceThreshold: number; minSilenceDuration: number }) => {
-      return apiRequest("/api/projects", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await apiRequest("POST", "/api/projects", data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       setProjectName("");
       setFileName("");
+      setSilenceThreshold(-40);
+      setMinSilenceDuration(500);
       toast({
         title: "Project created",
         description: "Your audio project has been added to the queue.",
@@ -49,9 +48,7 @@ export default function Home() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/projects/${id}`, {
-        method: "DELETE",
-      });
+      await apiRequest("DELETE", `/api/projects/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });

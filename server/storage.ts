@@ -1,21 +1,13 @@
 import { db } from "./db";
 import {
-  users,
   projects,
-  type User,
-  type InsertUser,
   type Project,
   type CreateProjectRequest,
   type UpdateProjectRequest,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { randomUUID } from "crypto";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  
   getProjects(): Promise<Project[]>;
   getProject(id: number): Promise<Project | undefined>;
   createProject(project: CreateProjectRequest): Promise<Project>;
@@ -24,21 +16,6 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
-  }
-
   async getProjects(): Promise<Project[]> {
     return await db.select().from(projects).orderBy(projects.createdAt);
   }
