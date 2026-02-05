@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, History, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { ProjectResponse } from "@shared/routes";
+import logoImage from "@assets/qc_favicon_1770313942389.png";
 
 const presets = [
   { name: "Podcast", icon: Mic, threshold: -35, duration: 500 },
@@ -94,9 +95,12 @@ export default function Home() {
       <header className="border-b border-border/50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 via-blue-500 to-purple-500 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">Q</span>
-            </div>
+            <img 
+              src={logoImage} 
+              alt="QuietCutter" 
+              className="w-8 h-8 rounded-lg"
+              style={{ mixBlendMode: 'lighten' }}
+            />
             <span className="font-semibold text-foreground/80">QuietCutter</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
@@ -123,9 +127,12 @@ export default function Home() {
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-teal-400 via-blue-500 to-purple-500 flex items-center justify-center">
-            <span className="text-white font-bold text-3xl">Q</span>
-          </div>
+          <img 
+            src={logoImage} 
+            alt="QuietCutter" 
+            className="w-24 h-24 mx-auto mb-4 rounded-2xl"
+            style={{ mixBlendMode: 'lighten' }}
+          />
           <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
             QuietCutter
           </h1>
