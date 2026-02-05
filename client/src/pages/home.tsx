@@ -134,7 +134,7 @@ export default function Home() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-blue-400 to-purple-400 bg-clip-text text-transparent" style={{ fontFamily: "'Outfit', sans-serif" }}>
             QuietCutter
           </h1>
-          <p className="text-muted-foreground text-sm tracking-widest mt-1">— MAKE EVERY SECOND COUNT. —</p>
+          <p className="text-muted-foreground text-sm tracking-widest mt-1">— MAKE EVERY SECOND COUNT —</p>
         </div>
 
         <div className="flex justify-center gap-2 mb-8">
