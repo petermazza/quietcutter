@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, History, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { ProjectResponse } from "@shared/routes";
-import logoImage from "@assets/qc_favicon_1770313942389.png";
+import logoImage from "@assets/transparent_output_1770321954939.png";
 
 const presets = [
   { name: "Podcast", icon: Mic, threshold: -35, duration: 500 },
