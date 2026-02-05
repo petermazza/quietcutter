@@ -1,27 +1,46 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { pgTable, text, varchar, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+});
 
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  status: text("status", { enum: ["pending", "processing", "completed", "failed"] }).notNull().default("pending"),
-  inputUrl: text("input_url"),
-  outputUrl: text("output_url"),
+  originalFileName: text("original_file_name").notNull(),
+  status: text("status").notNull().default("pending"),
+  silenceThreshold: integer("silence_threshold").notNull().default(-40),
+  minSilenceDuration: integer("min_silence_duration").notNull().default(500),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertProjectSchema = createInsertSchema(projects).omit({ 
-  id: true, 
-  createdAt: true 
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
 });
 
-export type Project = typeof projects.$inferSelect;
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
 export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type Project = typeof projects.$inferSelect;
 
-// Auth placeholder (using Replit Auth)
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  replitId: text("replit_id").notNull().unique(),
-});
+export type CreateProjectRequest = {
+  name: string;
+  originalFileName: string;
+  silenceThreshold?: number;
+  minSilenceDuration?: number;
+};
+
+export type UpdateProjectRequest = Partial<InsertProject>;
+export type ProjectResponse = Project;
