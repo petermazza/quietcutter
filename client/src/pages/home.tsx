@@ -99,9 +99,8 @@ export default function Home() {
               src={logoImage} 
               alt="QuietCutter" 
               className="w-8 h-8 rounded-lg"
-              style={{ mixBlendMode: 'lighten' }}
             />
-            <span className="font-semibold text-foreground/80">QuietCutter</span>
+            <span className="font-semibold text-foreground/80" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>QuietCutter</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#" className="text-sm text-foreground font-medium" data-testid="link-home">Home</a>
@@ -131,9 +130,8 @@ export default function Home() {
             src={logoImage} 
             alt="QuietCutter" 
             className="w-24 h-24 mx-auto mb-4 rounded-2xl"
-            style={{ mixBlendMode: 'lighten' }}
           />
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-blue-400 to-purple-400 bg-clip-text text-transparent" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             QuietCutter
           </h1>
           <p className="text-muted-foreground text-sm tracking-widest mt-1">— MAKE EVERY SECOND COUNT. —</p>
