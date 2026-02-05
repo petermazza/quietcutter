@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -103,10 +104,10 @@ export default function Home() {
             <span className="font-semibold text-foreground/80" style={{ fontFamily: "'Outfit', sans-serif" }}>QuietCutter</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
-            <a href="#" className="text-sm text-foreground font-medium" data-testid="link-home">Home</a>
-            <a href="#" className="text-sm text-muted-foreground" data-testid="link-about">About</a>
-            <a href="#" className="text-sm text-muted-foreground" data-testid="link-blog">Blog</a>
-            <a href="#" className="text-sm text-muted-foreground" data-testid="link-contact">Contact</a>
+            <Link href="/" className="text-sm text-foreground font-medium" data-testid="link-home">Home</Link>
+            <Link href="/about" className="text-sm text-muted-foreground" data-testid="link-about">About</Link>
+            <Link href="/blog" className="text-sm text-muted-foreground" data-testid="link-blog">Blog</Link>
+            <Link href="/contact" className="text-sm text-muted-foreground" data-testid="link-contact">Contact</Link>
           </nav>
         </div>
       </header>
