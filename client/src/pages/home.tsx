@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, History, Star, Download, Trash2, Loader2, LogOut } from "lucide-react";
+import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, History, Star, Download, Trash2, Loader2, LogOut, Video } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import type { ProjectResponse } from "@shared/routes";
@@ -40,6 +40,11 @@ export default function Home() {
     queryKey: ["/api/projects/favorites"],
   });
 
+  const { data: subscriptionData } = useQuery<{ isPro: boolean }>({
+    queryKey: ["/api/subscription/status"],
+  });
+  const isPro = subscriptionData?.isPro ?? false;
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/projects/${id}`);
@@ -68,11 +73,34 @@ export default function Home() {
     setMinSilenceDuration(preset.duration / 1000);
   };
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
+
+    if (fileArray.length > 1 && !isPro) {
+      toast({
+        title: "Pro feature",
+        description: "Batch upload (up to 3 files) is available for Pro subscribers. Upgrade to unlock!",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (fileArray.length > 3) {
+      toast({
+        title: "Too many files",
+        description: "You can upload up to 3 files at once.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUploading(true);
     
     const formData = new FormData();
-    formData.append("audio", file);
+    for (const file of fileArray) {
+      formData.append("audio", file);
+    }
     formData.append("silenceThreshold", silenceThreshold.toString());
     formData.append("minSilenceDuration", Math.round(minSilenceDuration * 1000).toString());
     
@@ -84,12 +112,15 @@ export default function Home() {
       });
       
       if (!res.ok) {
-        throw new Error("Upload failed");
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.message || "Upload failed");
       }
       
       toast({
         title: "Upload successful",
-        description: "Your audio file is being processed. This may take a few minutes.",
+        description: fileArray.length > 1
+          ? `${fileArray.length} files are being processed. This may take a few minutes.`
+          : "Your file is being processed. This may take a few minutes.",
       });
       
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
@@ -103,10 +134,10 @@ export default function Home() {
         }
       }, 3000);
       
-    } catch (err) {
+    } catch (err: any) {
       toast({
         title: "Upload failed",
-        description: "There was an error uploading your file.",
+        description: err?.message || "There was an error uploading your file.",
         variant: "destructive",
       });
     } finally {
@@ -119,7 +150,7 @@ export default function Home() {
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      handleFileUpload(files[0]);
+      handleFileUpload(files);
     }
   };
 
@@ -135,7 +166,7 @@ export default function Home() {
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      handleFileUpload(files[0]);
+      handleFileUpload(files);
     }
   };
 
@@ -348,8 +379,15 @@ export default function Home() {
 
         <Card className="mb-6">
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-1">Upload Audio</h2>
-            <p className="text-sm text-muted-foreground mb-4">Drag and drop your audio file or click to browse</p>
+            <div className="flex items-center justify-between gap-4 mb-1 flex-wrap">
+              <h2 className="font-semibold">Upload Audio / Video</h2>
+              {isPro && (
+                <Badge className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border-blue-500/30" data-testid="badge-pro-batch">
+                  Pro: up to 3 files
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">Drag and drop your files or click to browse</p>
             
             <div
               className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer ${
@@ -364,9 +402,10 @@ export default function Home() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".mp3,.wav,.ogg,.flac,.m4a"
+                accept=".mp3,.wav,.ogg,.flac,.m4a,.mp4,.mov,.avi,.mkv,.webm"
                 className="hidden"
                 onChange={handleFileInputChange}
+                multiple={isPro}
                 data-testid="input-file"
               />
               {isUploading ? (
@@ -376,12 +415,17 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <div className="flex justify-center gap-3 mb-4">
+                    <Upload className="w-10 h-10 text-muted-foreground" />
+                    <Video className="w-10 h-10 text-muted-foreground" />
+                  </div>
                   <p className="text-sm">
                     <span className="text-primary cursor-pointer">Click to upload</span>
                     {" "}or drag and drop
                   </p>
-                  <p className="text-xs text-muted-foreground mt-2">MP3, WAV, OGG, FLAC, M4A supported (max 500MB)</p>
+                  <p className="text-xs text-muted-foreground mt-2">Audio: MP3, WAV, OGG, FLAC, M4A</p>
+                  <p className="text-xs text-muted-foreground mt-1">Video: MP4, MOV, AVI, MKV, WEBM</p>
+                  <p className="text-xs text-muted-foreground mt-1">Max 500MB per file</p>
                 </>
               )}
             </div>
@@ -468,7 +512,7 @@ export default function Home() {
         )}
 
         <p className="text-center text-sm text-muted-foreground mt-8">
-          Upload an audio file above to automatically remove silence using your selected settings.
+          Upload an audio or video file above to automatically remove silence using your selected settings.
         </p>
       </main>
     </div>

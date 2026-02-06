@@ -1,8 +1,10 @@
 import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
 import { api } from "@shared/routes";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import multer from "multer";
 import path from "path";
@@ -15,6 +17,10 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+const allowedAudioTypes = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/ogg", "audio/flac", "audio/m4a", "audio/x-m4a"];
+const allowedVideoTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];
+const allowedExtensions = /\.(mp3|wav|ogg|flac|m4a|mp4|mov|avi|mkv|webm)$/i;
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
@@ -24,11 +30,10 @@ const upload = multer({
     },
   }),
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/ogg", "audio/flac", "audio/m4a", "audio/x-m4a"];
-    if (allowedTypes.includes(file.mimetype) || file.originalname.match(/\.(mp3|wav|ogg|flac|m4a)$/i)) {
+    if ([...allowedAudioTypes, ...allowedVideoTypes].includes(file.mimetype) || file.originalname.match(allowedExtensions)) {
       cb(null, true);
     } else {
-      cb(new Error("Only audio files are allowed"));
+      cb(new Error("Only audio and video files are allowed (MP3, WAV, OGG, FLAC, M4A, MP4, MOV, AVI, MKV, WEBM)"));
     }
   },
   limits: { fileSize: 500 * 1024 * 1024 },
@@ -143,27 +148,76 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/upload", upload.single("audio"), async (req: any, res) => {
+  app.get("/api/subscription/status", async (req: any, res) => {
     try {
-      if (!req.file) {
+      const userId = req.user?.claims?.sub || null;
+      if (!userId) {
+        return res.json({ isPro: false });
+      }
+
+      const result = await db.execute(
+        sql`SELECT s.status FROM stripe.subscriptions s
+            JOIN stripe.customers c ON s.customer = c.id
+            WHERE c.metadata->>'userId' = ${userId}
+            AND s.status = 'active'
+            LIMIT 1`
+      );
+
+      res.json({ isPro: (result.rows?.length ?? 0) > 0 });
+    } catch (err) {
+      console.error("Error checking subscription:", err);
+      res.json({ isPro: false });
+    }
+  });
+
+  app.post("/api/upload", upload.array("audio", 3), async (req: any, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-      
+
       const userId = req.user?.claims?.sub || null;
+
+      if (files.length > 1) {
+        let isPro = false;
+        if (userId) {
+          const result = await db.execute(
+            sql`SELECT s.status FROM stripe.subscriptions s
+                JOIN stripe.customers c ON s.customer = c.id
+                WHERE c.metadata->>'userId' = ${userId}
+                AND s.status = 'active'
+                LIMIT 1`
+          );
+          isPro = (result.rows?.length ?? 0) > 0;
+        }
+        if (!isPro) {
+          for (const file of files) {
+            try { fs.unlinkSync(file.path); } catch {}
+          }
+          return res.status(403).json({ message: "Batch upload is a Pro feature. Upgrade to upload up to 3 files at once." });
+        }
+      }
+
       const { silenceThreshold, minSilenceDuration } = req.body;
-      
-      const project = await storage.createProject({
-        name: req.file.originalname.replace(/\.[^/.]+$/, ""),
-        originalFileName: req.file.originalname,
-        originalFilePath: req.file.path,
-        userId,
-        silenceThreshold: parseInt(silenceThreshold) || -40,
-        minSilenceDuration: parseInt(minSilenceDuration) || 500,
-      });
-      
-      processAudio(project.id, req.file.path, parseInt(silenceThreshold) || -40, parseInt(minSilenceDuration) || 500);
-      
-      res.status(201).json(project);
+      const projects = [];
+
+      for (const file of files) {
+        const isVideo = file.originalname.match(/\.(mp4|mov|avi|mkv|webm)$/i);
+        const project = await storage.createProject({
+          name: file.originalname.replace(/\.[^/.]+$/, ""),
+          originalFileName: file.originalname,
+          originalFilePath: file.path,
+          userId,
+          silenceThreshold: parseInt(silenceThreshold) || -40,
+          minSilenceDuration: parseInt(minSilenceDuration) || 500,
+        });
+
+        processAudio(project.id, file.path, parseInt(silenceThreshold) || -40, parseInt(minSilenceDuration) || 500, !!isVideo);
+        projects.push(project);
+      }
+
+      res.status(201).json(projects.length === 1 ? projects[0] : projects);
     } catch (err) {
       console.error("Error uploading file:", err);
       res.status(500).json({ message: "Failed to upload file" });
@@ -315,7 +369,7 @@ export async function registerRoutes(
   return httpServer;
 }
 
-async function processAudio(projectId: number, inputPath: string, threshold: number, minDuration: number) {
+async function processAudio(projectId: number, inputPath: string, threshold: number, minDuration: number, isVideo: boolean = false) {
   const { exec } = await import("child_process");
   const { promisify } = await import("util");
   const execAsync = promisify(exec);
@@ -323,14 +377,26 @@ async function processAudio(projectId: number, inputPath: string, threshold: num
   try {
     await storage.updateProject(projectId, { status: "processing" });
     
+    let audioInputPath = inputPath;
+    
+    if (isVideo) {
+      const extractedAudioPath = inputPath.replace(/\.[^/.]+$/, "_extracted.wav");
+      const extractCmd = `ffmpeg -i "${inputPath}" -vn -acodec pcm_s16le -ar 44100 -ac 2 -y "${extractedAudioPath}"`;
+      await execAsync(extractCmd, { timeout: 600000 });
+      audioInputPath = extractedAudioPath;
+    }
+    
     const outputPath = inputPath.replace(/\.[^/.]+$/, "_processed.mp3");
     
-    const silenceDetect = `silencedetect=noise=${threshold}dB:d=${minDuration / 1000}`;
     const silenceRemove = `silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:detection=peak,aformat=sample_fmts=s16:sample_rates=44100,silenceremove=start_periods=0:start_duration=0:stop_periods=-1:stop_duration=${minDuration / 1000}:stop_threshold=${threshold}dB:detection=peak`;
     
-    const command = `ffmpeg -i "${inputPath}" -af "${silenceRemove}" -y "${outputPath}"`;
+    const command = `ffmpeg -i "${audioInputPath}" -af "${silenceRemove}" -y "${outputPath}"`;
     
     await execAsync(command, { timeout: 600000 });
+    
+    if (isVideo && audioInputPath !== inputPath) {
+      try { fs.unlinkSync(audioInputPath); } catch {}
+    }
     
     await storage.updateProject(projectId, { 
       status: "completed",
