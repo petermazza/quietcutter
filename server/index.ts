@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
-import { getStripeSync } from './stripeClient';
+import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 
 const app = express();
@@ -45,9 +45,42 @@ async function initStripe() {
       console.log('Webhook setup skipped (may already exist or not available in test mode)');
     }
 
-    stripeSync.syncBackfill()
-      .then(() => console.log('Stripe data synced'))
+    await stripeSync.syncBackfill().then(() => console.log('Stripe data synced'))
       .catch((err: any) => console.error('Error syncing Stripe data:', err));
+
+    const { db } = await import('./db');
+    const { sql } = await import('drizzle-orm');
+    const existingProducts = await db.execute(sql`SELECT id FROM stripe.products WHERE active = true LIMIT 1`);
+    if (existingProducts.rows.length === 0) {
+      console.log('No Stripe products found, creating QuietCutter Pro...');
+      try {
+        const stripe = await getUncachableStripeClient();
+        const product = await stripe.products.create({
+          name: 'QuietCutter Pro',
+          description: 'Unlimited audio processing, priority support, and advanced features',
+          metadata: { tier: 'pro', features: 'unlimited_processing,priority_support,batch_processing,advanced_settings' }
+        });
+        await stripe.prices.create({
+          product: product.id,
+          unit_amount: 999,
+          currency: 'usd',
+          recurring: { interval: 'month' },
+          metadata: { plan: 'monthly' }
+        });
+        await stripe.prices.create({
+          product: product.id,
+          unit_amount: 7999,
+          currency: 'usd',
+          recurring: { interval: 'year' },
+          metadata: { plan: 'yearly' }
+        });
+        console.log('QuietCutter Pro product created, syncing...');
+        await stripeSync.syncBackfill();
+        console.log('Products synced to database');
+      } catch (seedErr) {
+        console.error('Error seeding Stripe products:', seedErr);
+      }
+    }
   } catch (error) {
     console.error('Failed to initialize Stripe:', error);
   }
