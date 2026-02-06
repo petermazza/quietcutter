@@ -10,7 +10,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { stripeService } from "./stripeService";
-import { getStripePublishableKey } from "./stripeClient";
+import { getStripePublishableKey, getUncachableStripeClient, getStripeSync } from "./stripeClient";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -554,7 +554,64 @@ export async function registerRoutes(
         }
       }
 
-      res.json({ data: Array.from(productsMap.values()) });
+      if (productsMap.size > 0) {
+        return res.json({ data: Array.from(productsMap.values()) });
+      }
+
+      console.log("No products in database, fetching from Stripe API directly...");
+      const stripe = await getUncachableStripeClient();
+      const stripeProducts = await stripe.products.list({ active: true });
+      let quietCutterPro = stripeProducts.data.find(p => p.name === 'QuietCutter Pro');
+
+      if (!quietCutterPro) {
+        console.log("Creating QuietCutter Pro product in Stripe...");
+        quietCutterPro = await stripe.products.create({
+          name: 'QuietCutter Pro',
+          description: 'Unlimited audio processing, priority support, and advanced features',
+          metadata: { tier: 'pro' }
+        });
+        await stripe.prices.create({
+          product: quietCutterPro.id,
+          unit_amount: 999,
+          currency: 'usd',
+          recurring: { interval: 'month' },
+          metadata: { plan: 'monthly' }
+        });
+        await stripe.prices.create({
+          product: quietCutterPro.id,
+          unit_amount: 7999,
+          currency: 'usd',
+          recurring: { interval: 'year' },
+          metadata: { plan: 'yearly' }
+        });
+      }
+
+      const stripePrices = await stripe.prices.list({ product: quietCutterPro.id, active: true });
+
+      try {
+        const stripeSync = await getStripeSync();
+        await stripeSync.syncBackfill();
+        console.log("Stripe data synced to database");
+      } catch (syncErr) {
+        console.log("Sync to database deferred, serving from API");
+      }
+
+      const apiData = [{
+        id: quietCutterPro.id,
+        name: quietCutterPro.name,
+        description: quietCutterPro.description,
+        active: quietCutterPro.active,
+        metadata: quietCutterPro.metadata,
+        prices: stripePrices.data.map(p => ({
+          id: p.id,
+          unit_amount: p.unit_amount,
+          currency: p.currency,
+          recurring: p.recurring,
+          active: p.active,
+        }))
+      }];
+
+      res.json({ data: apiData });
     } catch (err) {
       console.error("Error fetching products:", err);
       res.status(500).json({ message: "Failed to fetch products" });
