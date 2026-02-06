@@ -16,6 +16,16 @@ export const projects = pgTable("projects", {
   silenceThreshold: integer("silence_threshold").notNull().default(-40),
   minSilenceDuration: integer("min_silence_duration").notNull().default(500),
   isFavorite: boolean("is_favorite").notNull().default(false),
+  outputFormat: text("output_format").notNull().default("mp3"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const customPresets = pgTable("custom_presets", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  silenceThreshold: integer("silence_threshold").notNull().default(-40),
+  minSilenceDuration: integer("min_silence_duration").notNull().default(500),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -45,6 +55,14 @@ export type CreateProjectRequest = {
 
 export type UpdateProjectRequest = Partial<InsertProject>;
 export type ProjectResponse = Project;
+
+export const insertCustomPresetSchema = createInsertSchema(customPresets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCustomPreset = z.infer<typeof insertCustomPresetSchema>;
+export type CustomPreset = typeof customPresets.$inferSelect;
 
 export const insertContactMessageSchema = createInsertSchema(contactMessages).omit({
   id: true,

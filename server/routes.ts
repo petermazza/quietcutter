@@ -39,6 +39,64 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 },
 });
 
+const FREE_FILE_SIZE_LIMIT = 100 * 1024 * 1024;
+const PRO_FILE_SIZE_LIMIT = 500 * 1024 * 1024;
+const FREE_PROJECT_LIMIT = 1;
+
+async function checkIsPro(userId: string | null): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const result = await db.execute(
+      sql`SELECT s.status FROM stripe.subscriptions s
+          JOIN stripe.customers c ON s.customer = c.id
+          WHERE c.metadata->>'userId' = ${userId}
+          AND s.status = 'active'
+          LIMIT 1`
+    );
+    return (result.rows?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+const processingQueue: Array<{
+  projectId: number;
+  inputPath: string;
+  threshold: number;
+  minDuration: number;
+  isVideo: boolean;
+  outputFormat: string;
+  isPro: boolean;
+}> = [];
+let isProcessing = false;
+
+async function enqueueProcessing(item: typeof processingQueue[0]) {
+  if (item.isPro) {
+    const firstFreeIndex = processingQueue.findIndex(q => !q.isPro);
+    if (firstFreeIndex >= 0) {
+      processingQueue.splice(firstFreeIndex, 0, item);
+    } else {
+      processingQueue.push(item);
+    }
+  } else {
+    processingQueue.push(item);
+  }
+  if (!isProcessing) {
+    processNext();
+  }
+}
+
+async function processNext() {
+  if (processingQueue.length === 0) {
+    isProcessing = false;
+    return;
+  }
+  isProcessing = true;
+  const item = processingQueue.shift()!;
+  await processAudio(item.projectId, item.inputPath, item.threshold, item.minDuration, item.isVideo, item.outputFormat);
+  processNext();
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -151,19 +209,8 @@ export async function registerRoutes(
   app.get("/api/subscription/status", async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || null;
-      if (!userId) {
-        return res.json({ isPro: false });
-      }
-
-      const result = await db.execute(
-        sql`SELECT s.status FROM stripe.subscriptions s
-            JOIN stripe.customers c ON s.customer = c.id
-            WHERE c.metadata->>'userId' = ${userId}
-            AND s.status = 'active'
-            LIMIT 1`
-      );
-
-      res.json({ isPro: (result.rows?.length ?? 0) > 0 });
+      const isPro = await checkIsPro(userId);
+      res.json({ isPro });
     } catch (err) {
       console.error("Error checking subscription:", err);
       res.json({ isPro: false });
@@ -178,32 +225,48 @@ export async function registerRoutes(
       }
 
       const userId = req.user?.claims?.sub || null;
+      const isPro = await checkIsPro(userId);
 
-      if (files.length > 1) {
-        let isPro = false;
-        if (userId) {
-          const result = await db.execute(
-            sql`SELECT s.status FROM stripe.subscriptions s
-                JOIN stripe.customers c ON s.customer = c.id
-                WHERE c.metadata->>'userId' = ${userId}
-                AND s.status = 'active'
-                LIMIT 1`
-          );
-          isPro = (result.rows?.length ?? 0) > 0;
-        }
-        if (!isPro) {
-          for (const file of files) {
-            try { fs.unlinkSync(file.path); } catch {}
+      const fileSizeLimit = isPro ? PRO_FILE_SIZE_LIMIT : FREE_FILE_SIZE_LIMIT;
+      for (const file of files) {
+        if (file.size > fileSizeLimit) {
+          for (const f of files) {
+            try { fs.unlinkSync(f.path); } catch {}
           }
-          return res.status(403).json({ message: "Batch upload is a Pro feature. Upgrade to upload up to 3 files at once." });
+          const limitMB = Math.round(fileSizeLimit / (1024 * 1024));
+          return res.status(413).json({ message: `File "${file.originalname}" exceeds the ${limitMB}MB limit. ${isPro ? "" : "Upgrade to Pro for 500MB uploads."}` });
         }
       }
 
-      const { silenceThreshold, minSilenceDuration } = req.body;
-      const projects = [];
+      if (files.length > 1 && !isPro) {
+        for (const file of files) {
+          try { fs.unlinkSync(file.path); } catch {}
+        }
+        return res.status(403).json({ message: "Batch upload is a Pro feature. Upgrade to upload up to 3 files at once." });
+      }
+
+      if (!isPro && userId) {
+        const projectCount = await storage.getProjectCount(userId);
+        if (projectCount >= FREE_PROJECT_LIMIT) {
+          const oldest = await storage.getOldestProject(userId);
+          if (oldest) {
+            if (oldest.originalFilePath) {
+              try { fs.unlinkSync(oldest.originalFilePath); } catch {}
+            }
+            if (oldest.processedFilePath) {
+              try { fs.unlinkSync(oldest.processedFilePath); } catch {}
+            }
+            await storage.deleteProject(oldest.id);
+          }
+        }
+      }
+
+      const { silenceThreshold, minSilenceDuration, outputFormat } = req.body;
+      const resolvedFormat = isPro && outputFormat ? outputFormat : "mp3";
+      const createdProjects = [];
 
       for (const file of files) {
-        const isVideo = file.originalname.match(/\.(mp4|mov|avi|mkv|webm)$/i);
+        const isVideo = !!file.originalname.match(/\.(mp4|mov|avi|mkv|webm)$/i);
         const project = await storage.createProject({
           name: file.originalname.replace(/\.[^/.]+$/, ""),
           originalFileName: file.originalname,
@@ -211,13 +274,22 @@ export async function registerRoutes(
           userId,
           silenceThreshold: parseInt(silenceThreshold) || -40,
           minSilenceDuration: parseInt(minSilenceDuration) || 500,
+          outputFormat: resolvedFormat,
         });
 
-        processAudio(project.id, file.path, parseInt(silenceThreshold) || -40, parseInt(minSilenceDuration) || 500, !!isVideo);
-        projects.push(project);
+        enqueueProcessing({
+          projectId: project.id,
+          inputPath: file.path,
+          threshold: parseInt(silenceThreshold) || -40,
+          minDuration: parseInt(minSilenceDuration) || 500,
+          isVideo,
+          outputFormat: resolvedFormat,
+          isPro,
+        });
+        createdProjects.push(project);
       }
 
-      res.status(201).json(projects.length === 1 ? projects[0] : projects);
+      res.status(201).json(createdProjects.length === 1 ? createdProjects[0] : createdProjects);
     } catch (err) {
       console.error("Error uploading file:", err);
       res.status(500).json({ message: "Failed to upload file" });
@@ -242,7 +314,8 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Processed file not found" });
       }
       
-      res.download(project.processedFilePath, `${project.name}_processed.mp3`);
+      const ext = project.outputFormat || "mp3";
+      res.download(project.processedFilePath, `${project.name}_processed.${ext}`);
     } catch (err) {
       console.error("Error downloading file:", err);
       res.status(500).json({ message: "Failed to download file" });
@@ -285,6 +358,162 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error saving contact message:", err);
       res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.get("/api/presets", async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Sign in to view presets" });
+      }
+      const presets = await storage.getCustomPresets(userId);
+      res.json(presets);
+    } catch (err) {
+      console.error("Error fetching presets:", err);
+      res.status(500).json({ message: "Failed to fetch presets" });
+    }
+  });
+
+  app.post("/api/presets", async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Sign in to save presets" });
+      }
+
+      const isPro = await checkIsPro(userId);
+      if (!isPro) {
+        return res.status(403).json({ message: "Custom presets are a Pro feature." });
+      }
+
+      const { name, silenceThreshold, minSilenceDuration } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "Preset name is required" });
+      }
+
+      const preset = await storage.createCustomPreset({
+        userId,
+        name,
+        silenceThreshold: silenceThreshold ?? -40,
+        minSilenceDuration: minSilenceDuration ?? 500,
+      });
+      res.status(201).json(preset);
+    } catch (err) {
+      console.error("Error creating preset:", err);
+      res.status(500).json({ message: "Failed to create preset" });
+    }
+  });
+
+  app.delete("/api/presets/:id", async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Sign in required" });
+      }
+      const id = parseInt(req.params.id as string, 10);
+      const deleted = await storage.deleteCustomPreset(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Preset not found" });
+      }
+      res.status(204).send();
+    } catch (err) {
+      console.error("Error deleting preset:", err);
+      res.status(500).json({ message: "Failed to delete preset" });
+    }
+  });
+
+  app.get("/api/projects/bulk-download", async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Sign in required" });
+      }
+
+      const isPro = await checkIsPro(userId);
+      if (!isPro) {
+        return res.status(403).json({ message: "Bulk download is a Pro feature." });
+      }
+
+      const userProjects = await storage.getProjects(userId);
+      const completedProjects = userProjects.filter(
+        p => p.status === "completed" && p.processedFilePath && fs.existsSync(p.processedFilePath)
+      );
+
+      if (completedProjects.length === 0) {
+        return res.status(404).json({ message: "No completed projects to download" });
+      }
+
+      const archiver = (await import("archiver")).default;
+      const archive = archiver("zip", { zlib: { level: 5 } });
+
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", "attachment; filename=quietcutter_projects.zip");
+
+      archive.pipe(res);
+
+      for (const project of completedProjects) {
+        const ext = project.outputFormat || "mp3";
+        archive.file(project.processedFilePath!, { name: `${project.name}_processed.${ext}` });
+      }
+
+      await archive.finalize();
+    } catch (err) {
+      console.error("Error creating bulk download:", err);
+      res.status(500).json({ message: "Failed to create download" });
+    }
+  });
+
+  app.get("/api/projects/:id/preview", async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id as string, 10);
+      const userId = req.user?.claims?.sub || null;
+      const project = await storage.getProject(id);
+
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      if (project.userId && project.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const isPro = await checkIsPro(userId);
+      if (!isPro) {
+        return res.status(403).json({ message: "Audio preview is a Pro feature." });
+      }
+
+      if (!project.processedFilePath || !fs.existsSync(project.processedFilePath)) {
+        return res.status(404).json({ message: "Processed file not found" });
+      }
+
+      const stat = fs.statSync(project.processedFilePath);
+      const ext = project.outputFormat || "mp3";
+      const mimeTypes: Record<string, string> = {
+        mp3: "audio/mpeg",
+        wav: "audio/wav",
+        flac: "audio/flac",
+      };
+
+      res.setHeader("Content-Type", mimeTypes[ext] || "audio/mpeg");
+      res.setHeader("Content-Length", stat.size);
+      res.setHeader("Accept-Ranges", "bytes");
+
+      const range = req.headers.range;
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+        res.status(206);
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${stat.size}`);
+        res.setHeader("Content-Length", end - start + 1);
+        fs.createReadStream(project.processedFilePath, { start, end }).pipe(res);
+      } else {
+        fs.createReadStream(project.processedFilePath).pipe(res);
+      }
+    } catch (err) {
+      console.error("Error streaming preview:", err);
+      res.status(500).json({ message: "Failed to stream audio" });
     }
   });
 
@@ -369,7 +598,7 @@ export async function registerRoutes(
   return httpServer;
 }
 
-async function processAudio(projectId: number, inputPath: string, threshold: number, minDuration: number, isVideo: boolean = false) {
+async function processAudio(projectId: number, inputPath: string, threshold: number, minDuration: number, isVideo: boolean = false, outputFormat: string = "mp3") {
   const { exec } = await import("child_process");
   const { promisify } = await import("util");
   const execAsync = promisify(exec);
@@ -386,11 +615,21 @@ async function processAudio(projectId: number, inputPath: string, threshold: num
       audioInputPath = extractedAudioPath;
     }
     
-    const outputPath = inputPath.replace(/\.[^/.]+$/, "_processed.mp3");
+    const ext = outputFormat === "wav" ? "wav" : outputFormat === "flac" ? "flac" : "mp3";
+    const outputPath = inputPath.replace(/\.[^/.]+$/, `_processed.${ext}`);
     
     const silenceRemove = `silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:detection=peak,aformat=sample_fmts=s16:sample_rates=44100,silenceremove=start_periods=0:start_duration=0:stop_periods=-1:stop_duration=${minDuration / 1000}:stop_threshold=${threshold}dB:detection=peak`;
     
-    const command = `ffmpeg -i "${audioInputPath}" -af "${silenceRemove}" -y "${outputPath}"`;
+    let formatArgs = "";
+    if (ext === "wav") {
+      formatArgs = "-acodec pcm_s16le";
+    } else if (ext === "flac") {
+      formatArgs = "-acodec flac";
+    } else {
+      formatArgs = "-ab 320k";
+    }
+    
+    const command = `ffmpeg -i "${audioInputPath}" -af "${silenceRemove}" ${formatArgs} -y "${outputPath}"`;
     
     await execAsync(command, { timeout: 600000 });
     

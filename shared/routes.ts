@@ -25,6 +25,7 @@ const projectResponseSchema = z.object({
   isFavorite: z.boolean().nullable().optional(),
   silenceThreshold: z.number(),
   minSilenceDuration: z.number(),
+  outputFormat: z.string().optional(),
   createdAt: z.string().nullable(),
 });
 
