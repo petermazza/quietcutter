@@ -532,14 +532,47 @@ export async function registerRoutes(
       nodeEnv: process.env.NODE_ENV,
       isDeployment: process.env.REPLIT_DEPLOYMENT === '1',
       hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
+      secretKeyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 12) + '...' + process.env.STRIPE_SECRET_KEY?.slice(-4),
       hasPublishableKey: !!process.env.STRIPE_PUBLISHABLE_KEY,
       hasConnectorHostname: !!process.env.REPLIT_CONNECTORS_HOSTNAME,
       hasReplIdentity: !!process.env.REPL_IDENTITY,
       hasWebReplRenewal: !!process.env.WEB_REPL_RENEWAL,
     };
+
+    const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+    const xReplitToken = process.env.REPL_IDENTITY
+      ? 'repl ' + process.env.REPL_IDENTITY
+      : process.env.WEB_REPL_RENEWAL
+        ? 'depl ' + process.env.WEB_REPL_RENEWAL
+        : null;
+
+    for (const env of ['production', 'development']) {
+      try {
+        if (xReplitToken && hostname) {
+          const url = new URL(`https://${hostname}/api/v2/connection`);
+          url.searchParams.set('include_secrets', 'true');
+          url.searchParams.set('connector_names', 'stripe');
+          url.searchParams.set('environment', env);
+          const resp = await fetch(url.toString(), {
+            headers: { 'Accept': 'application/json', 'X_REPLIT_TOKEN': xReplitToken }
+          });
+          const data = await resp.json();
+          const conn = data.items?.[0];
+          info[`connector_${env}`] = {
+            found: !!conn,
+            hasSecret: !!conn?.settings?.secret,
+            hasPublishable: !!conn?.settings?.publishable,
+            secretPrefix: conn?.settings?.secret ? conn.settings.secret.substring(0, 12) + '...' : null,
+            itemCount: data.items?.length || 0,
+          };
+        }
+      } catch (err: any) {
+        info[`connector_${env}`] = { error: err.message };
+      }
+    }
+
     try {
       const stripe = await getUncachableStripeClient();
-      info.stripeKeyPrefix = (stripe as any)._api?.auth?.substring(0, 12) + '...';
       const products = await stripe.products.list({ active: true, limit: 1 });
       info.stripeApiWorks = true;
       info.stripeProductCount = products.data.length;
