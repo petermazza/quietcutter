@@ -45,6 +45,9 @@ export default function Home() {
   const [presetName, setPresetName] = useState("");
   const [showSavePreset, setShowSavePreset] = useState(false);
   const [playingProjectId, setPlayingProjectId] = useState<number | null>(null);
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [pricingData, setPricingData] = useState<any>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const waveformRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -320,28 +323,32 @@ export default function Home() {
 
       if (!productsData.data || productsData.data.length === 0) {
         toast({
-          title: "Coming Soon",
-          description: "Pro subscription will be available soon!",
-        });
-        return;
-      }
-
-      const product = productsData.data[0];
-      const monthlyPrice = product.prices?.find((p: any) => p.recurring?.interval === "month");
-
-      if (!monthlyPrice) {
-        toast({
-          title: "Error",
-          description: "No pricing available. Please try again later.",
+          title: "Unavailable",
+          description: "Pro subscription is not configured yet. Please try again later.",
           variant: "destructive",
         });
         return;
       }
 
+      const product = productsData.data[0];
+      setPricingData(product);
+      setShowPricingModal(true);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to load pricing. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCheckout = async (priceId: string) => {
+    try {
+      setCheckoutLoading(priceId);
       const checkoutRes = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId: monthlyPrice.id }),
+        body: JSON.stringify({ priceId }),
         credentials: "include",
       });
 
@@ -358,6 +365,8 @@ export default function Home() {
         description: "Failed to start checkout. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setCheckoutLoading(null);
     }
   };
 
@@ -835,6 +844,96 @@ export default function Home() {
           Upload an audio or video file above to automatically remove silence using your selected settings.
         </p>
       </main>
+
+      {showPricingModal && pricingData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-pricing">
+          <Card className="w-full max-w-lg mx-4 relative">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="absolute top-3 right-3"
+              onClick={() => setShowPricingModal(false)}
+              data-testid="button-close-pricing"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <CardContent className="p-6">
+              <div className="text-center mb-6">
+                <Crown className="h-10 w-10 text-yellow-400 mx-auto mb-3" />
+                <h2 className="text-xl font-bold text-foreground">Upgrade to {pricingData.name}</h2>
+                <p className="text-sm text-muted-foreground mt-1">{pricingData.description}</p>
+              </div>
+
+              <div className="grid gap-4">
+                {pricingData.prices
+                  ?.sort((a: any, b: any) => (a.recurring?.interval === "month" ? -1 : 1))
+                  .map((price: any) => {
+                    const isMonthly = price.recurring?.interval === "month";
+                    const amount = (price.unit_amount / 100).toFixed(2);
+                    const perMonth = isMonthly
+                      ? amount
+                      : (price.unit_amount / 100 / 12).toFixed(2);
+
+                    return (
+                      <div
+                        key={price.id}
+                        className={`relative border rounded-md p-4 flex items-center justify-between gap-4 ${
+                          !isMonthly ? "border-yellow-500/50 bg-yellow-500/5" : "border-border"
+                        }`}
+                        data-testid={`pricing-option-${isMonthly ? "monthly" : "yearly"}`}
+                      >
+                        {!isMonthly && (
+                          <Badge className="absolute -top-2.5 left-4 bg-yellow-500 text-black text-xs">
+                            Save 33%
+                          </Badge>
+                        )}
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {isMonthly ? "Monthly" : "Yearly"}
+                          </p>
+                          <p className="text-2xl font-bold text-foreground">
+                            ${amount}
+                            <span className="text-sm font-normal text-muted-foreground">
+                              /{isMonthly ? "mo" : "yr"}
+                            </span>
+                          </p>
+                          {!isMonthly && (
+                            <p className="text-xs text-muted-foreground">${perMonth}/mo equivalent</p>
+                          )}
+                        </div>
+                        <Button
+                          onClick={() => handleCheckout(price.id)}
+                          disabled={!!checkoutLoading}
+                          data-testid={`button-checkout-${isMonthly ? "monthly" : "yearly"}`}
+                        >
+                          {checkoutLoading === price.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Subscribe"
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div className="mt-5 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground text-center">What you get with Pro:</p>
+                <div className="grid grid-cols-2 gap-1.5 text-xs text-muted-foreground">
+                  <span>Unlimited project history</span>
+                  <span>500MB file size limit</span>
+                  <span>All presets + custom presets</span>
+                  <span>MP3, WAV, FLAC output</span>
+                  <span>Batch upload (3 files)</span>
+                  <span>Priority processing</span>
+                  <span>Audio preview + waveform</span>
+                  <span>Bulk download as ZIP</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
