@@ -539,6 +539,7 @@ export async function registerRoutes(
     };
     try {
       const stripe = await getUncachableStripeClient();
+      info.stripeKeyPrefix = (stripe as any)._api?.auth?.substring(0, 12) + '...';
       const products = await stripe.products.list({ active: true, limit: 1 });
       info.stripeApiWorks = true;
       info.stripeProductCount = products.data.length;
