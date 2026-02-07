@@ -527,6 +527,35 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/stripe/debug", async (req, res) => {
+    const info: any = {
+      nodeEnv: process.env.NODE_ENV,
+      isDeployment: process.env.REPLIT_DEPLOYMENT === '1',
+      hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
+      hasPublishableKey: !!process.env.STRIPE_PUBLISHABLE_KEY,
+      hasConnectorHostname: !!process.env.REPLIT_CONNECTORS_HOSTNAME,
+      hasReplIdentity: !!process.env.REPL_IDENTITY,
+      hasWebReplRenewal: !!process.env.WEB_REPL_RENEWAL,
+    };
+    try {
+      const stripe = await getUncachableStripeClient();
+      const products = await stripe.products.list({ active: true, limit: 1 });
+      info.stripeApiWorks = true;
+      info.stripeProductCount = products.data.length;
+    } catch (err: any) {
+      info.stripeApiWorks = false;
+      info.stripeApiError = err.message;
+    }
+    try {
+      const dbProducts = await stripeService.listProductsWithPrices();
+      info.dbProductRows = (dbProducts as any[]).length;
+    } catch (err: any) {
+      info.dbProductRows = 0;
+      info.dbError = err.message;
+    }
+    res.json(info);
+  });
+
   app.get("/api/stripe/products", async (req, res) => {
     try {
       const products = await stripeService.listProductsWithPrices();
