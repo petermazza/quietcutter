@@ -60,7 +60,7 @@ async function checkIsPro(userId: string | null): Promise<boolean> {
 }
 
 const processingQueue: Array<{
-  projectId: number;
+  fileId: number;
   inputPath: string;
   threshold: number;
   minDuration: number;
@@ -93,7 +93,7 @@ async function processNext() {
   }
   isProcessing = true;
   const item = processingQueue.shift()!;
-  await processAudio(item.projectId, item.inputPath, item.threshold, item.minDuration, item.isVideo, item.outputFormat);
+  await processAudio(item.fileId, item.inputPath, item.threshold, item.minDuration, item.isVideo, item.outputFormat);
   processNext();
 }
 
@@ -108,8 +108,15 @@ export async function registerRoutes(
   app.get(api.projects.list.path, async (req, res) => {
     try {
       const userId = (req as any).user?.claims?.sub || null;
-      const projects = await storage.getProjects(userId);
-      res.json(projects);
+      if (!userId) return res.json([]);
+      const projectList = await storage.getProjects(userId);
+      const projectsWithFiles = await Promise.all(
+        projectList.map(async (project) => {
+          const files = await storage.getProjectFiles(project.id);
+          return { ...project, files };
+        })
+      );
+      res.json(projectsWithFiles);
     } catch (err) {
       console.error("Error fetching projects:", err);
       res.status(500).json({ message: "Failed to fetch projects" });
@@ -119,8 +126,15 @@ export async function registerRoutes(
   app.get("/api/projects/favorites", async (req, res) => {
     try {
       const userId = (req as any).user?.claims?.sub || null;
-      const projects = await storage.getFavorites(userId);
-      res.json(projects);
+      if (!userId) return res.json([]);
+      const favs = await storage.getFavorites(userId);
+      const favsWithFiles = await Promise.all(
+        favs.map(async (project) => {
+          const files = await storage.getProjectFiles(project.id);
+          return { ...project, files };
+        })
+      );
+      res.json(favsWithFiles);
     } catch (err) {
       console.error("Error fetching favorites:", err);
       res.status(500).json({ message: "Failed to fetch favorites" });
@@ -130,11 +144,16 @@ export async function registerRoutes(
   app.get(api.projects.get.path, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      const userId = (req as any).user?.claims?.sub || null;
       const project = await storage.getProject(id);
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
-      res.json(project);
+      if (project.userId && project.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const files = await storage.getProjectFiles(id);
+      res.json({ ...project, files });
     } catch (err) {
       console.error("Error fetching project:", err);
       res.status(500).json({ message: "Failed to fetch project" });
@@ -144,13 +163,12 @@ export async function registerRoutes(
   app.post(api.projects.create.path, async (req, res) => {
     try {
       const input = api.projects.create.input.parse(req.body);
+      const userId = (req as any).user?.claims?.sub || null;
       const project = await storage.createProject({
         name: input.name,
-        originalFileName: input.originalFileName,
-        silenceThreshold: input.silenceThreshold ?? -40,
-        minSilenceDuration: input.minSilenceDuration ?? 500,
+        userId,
       });
-      res.status(201).json(project);
+      res.status(201).json({ ...project, files: [] });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
@@ -166,12 +184,21 @@ export async function registerRoutes(
   app.patch(api.projects.update.path, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      const userId = (req as any).user?.claims?.sub || null;
+      const existingProject = await storage.getProject(id);
+      if (!existingProject) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      if (existingProject.userId && existingProject.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
       const input = api.projects.update.input.parse(req.body);
       const project = await storage.updateProject(id, input);
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
-      res.json(project);
+      const files = await storage.getProjectFiles(id);
+      res.json({ ...project, files });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
@@ -197,8 +224,14 @@ export async function registerRoutes(
       if (project.userId && project.userId !== userId) {
         return res.status(403).json({ message: "Access denied" });
       }
+
+      const files = await storage.getProjectFiles(id);
+      for (const file of files) {
+        if (file.originalFilePath) try { fs.unlinkSync(file.originalFilePath); } catch {}
+        if (file.processedFilePath) try { fs.unlinkSync(file.processedFilePath); } catch {}
+      }
       
-      const deleted = await storage.deleteProject(id);
+      await storage.deleteProject(id);
       res.status(204).send();
     } catch (err) {
       console.error("Error deleting project:", err);
@@ -245,33 +278,49 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Batch upload is a Pro feature. Upgrade to upload up to 3 files at once." });
       }
 
-      if (!isPro && userId) {
-        const projectCount = await storage.getProjectCount(userId);
-        if (projectCount >= FREE_PROJECT_LIMIT) {
-          const oldest = await storage.getOldestProject(userId);
-          if (oldest) {
-            if (oldest.originalFilePath) {
-              try { fs.unlinkSync(oldest.originalFilePath); } catch {}
+      const { silenceThreshold, minSilenceDuration, outputFormat, projectId: existingProjectId, projectName } = req.body;
+      const resolvedFormat = isPro && outputFormat ? outputFormat : "mp3";
+
+      let projectId: number;
+
+      if (existingProjectId) {
+        const existingProject = await storage.getProject(parseInt(existingProjectId, 10));
+        if (!existingProject) {
+          for (const file of files) { try { fs.unlinkSync(file.path); } catch {} }
+          return res.status(404).json({ message: "Project not found" });
+        }
+        if (existingProject.userId && existingProject.userId !== userId) {
+          for (const file of files) { try { fs.unlinkSync(file.path); } catch {} }
+          return res.status(403).json({ message: "Access denied" });
+        }
+        projectId = existingProject.id;
+      } else {
+        if (!isPro && userId) {
+          const projectCount = await storage.getProjectCount(userId);
+          if (projectCount >= FREE_PROJECT_LIMIT) {
+            const oldest = await storage.getOldestProject(userId);
+            if (oldest) {
+              const oldFiles = await storage.getProjectFiles(oldest.id);
+              for (const f of oldFiles) {
+                if (f.originalFilePath) try { fs.unlinkSync(f.originalFilePath); } catch {}
+                if (f.processedFilePath) try { fs.unlinkSync(f.processedFilePath); } catch {}
+              }
+              await storage.deleteProject(oldest.id);
             }
-            if (oldest.processedFilePath) {
-              try { fs.unlinkSync(oldest.processedFilePath); } catch {}
-            }
-            await storage.deleteProject(oldest.id);
           }
         }
+        const name = projectName || files[0].originalname.replace(/\.[^/.]+$/, "");
+        const project = await storage.createProject({ name, userId });
+        projectId = project.id;
       }
 
-      const { silenceThreshold, minSilenceDuration, outputFormat } = req.body;
-      const resolvedFormat = isPro && outputFormat ? outputFormat : "mp3";
-      const createdProjects = [];
-
+      const createdFiles = [];
       for (const file of files) {
         const isVideo = !!file.originalname.match(/\.(mp4|mov|avi|mkv|webm)$/i);
-        const project = await storage.createProject({
-          name: file.originalname.replace(/\.[^/.]+$/, ""),
+        const projectFile = await storage.createProjectFile({
+          projectId,
           originalFileName: file.originalname,
           originalFilePath: file.path,
-          userId,
           silenceThreshold: parseInt(silenceThreshold) || -40,
           minSilenceDuration: parseInt(minSilenceDuration) || 500,
           outputFormat: resolvedFormat,
@@ -280,7 +329,7 @@ export async function registerRoutes(
         });
 
         enqueueProcessing({
-          projectId: project.id,
+          fileId: projectFile.id,
           inputPath: file.path,
           threshold: parseInt(silenceThreshold) || -40,
           minDuration: parseInt(minSilenceDuration) || 500,
@@ -288,39 +337,69 @@ export async function registerRoutes(
           outputFormat: resolvedFormat,
           isPro,
         });
-        createdProjects.push(project);
+        createdFiles.push(projectFile);
       }
 
-      res.status(201).json(createdProjects.length === 1 ? createdProjects[0] : createdProjects);
+      const project = await storage.getProject(projectId);
+      const allFiles = await storage.getProjectFiles(projectId);
+      res.status(201).json({ ...project, files: allFiles });
     } catch (err) {
       console.error("Error uploading file:", err);
       res.status(500).json({ message: "Failed to upload file" });
     }
   });
 
-  app.get("/api/projects/:id/download", async (req, res) => {
+  app.get("/api/files/:id/download", async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
       const userId = (req as any).user?.claims?.sub || null;
-      const project = await storage.getProject(id);
+      const file = await storage.getProjectFile(id);
       
-      if (!project) {
-        return res.status(404).json({ message: "Project not found" });
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
       }
-      
-      if (project.userId && project.userId !== userId) {
+
+      const project = await storage.getProject(file.projectId);
+      if (project?.userId && project.userId !== userId) {
         return res.status(403).json({ message: "Access denied" });
       }
       
-      if (!project.processedFilePath || !fs.existsSync(project.processedFilePath)) {
+      if (!file.processedFilePath || !fs.existsSync(file.processedFilePath)) {
         return res.status(404).json({ message: "Processed file not found" });
       }
       
-      const ext = project.outputFormat || "mp3";
-      res.download(project.processedFilePath, `${project.name}_processed.${ext}`);
+      const ext = file.outputFormat || "mp3";
+      const name = file.originalFileName.replace(/\.[^/.]+$/, "");
+      res.download(file.processedFilePath, `${name}_processed.${ext}`);
     } catch (err) {
       console.error("Error downloading file:", err);
       res.status(500).json({ message: "Failed to download file" });
+    }
+  });
+
+  app.delete("/api/files/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string, 10);
+      const userId = (req as any).user?.claims?.sub || null;
+      const file = await storage.getProjectFile(id);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      const project = await storage.getProject(file.projectId);
+      if (project?.userId && project.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (file.originalFilePath) try { fs.unlinkSync(file.originalFilePath); } catch {}
+      if (file.processedFilePath) try { fs.unlinkSync(file.processedFilePath); } catch {}
+      
+      await storage.deleteProjectFile(id);
+      res.status(204).send();
+    } catch (err) {
+      console.error("Error deleting file:", err);
+      res.status(500).json({ message: "Failed to delete file" });
     }
   });
 
@@ -340,7 +419,8 @@ export async function registerRoutes(
       }
       
       const project = await storage.updateProject(id, { isFavorite });
-      res.json(project);
+      const files = await storage.getProjectFiles(id);
+      res.json({ ...project, files });
     } catch (err) {
       console.error("Error updating favorite:", err);
       res.status(500).json({ message: "Failed to update favorite" });
@@ -437,13 +517,13 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Bulk download is a Pro feature." });
       }
 
-      const userProjects = await storage.getProjects(userId);
-      const completedProjects = userProjects.filter(
-        p => p.status === "completed" && p.processedFilePath && fs.existsSync(p.processedFilePath)
+      const allFiles = await storage.getAllUserFiles(userId);
+      const completedFiles = allFiles.filter(
+        f => f.status === "completed" && f.processedFilePath && fs.existsSync(f.processedFilePath)
       );
 
-      if (completedProjects.length === 0) {
-        return res.status(404).json({ message: "No completed projects to download" });
+      if (completedFiles.length === 0) {
+        return res.status(404).json({ message: "No completed files to download" });
       }
 
       const archiver = (await import("archiver")).default;
@@ -454,9 +534,10 @@ export async function registerRoutes(
 
       archive.pipe(res);
 
-      for (const project of completedProjects) {
-        const ext = project.outputFormat || "mp3";
-        archive.file(project.processedFilePath!, { name: `${project.name}_processed.${ext}` });
+      for (const file of completedFiles) {
+        const ext = file.outputFormat || "mp3";
+        const name = file.originalFileName.replace(/\.[^/.]+$/, "");
+        archive.file(file.processedFilePath!, { name: `${name}_processed.${ext}` });
       }
 
       await archive.finalize();
@@ -466,17 +547,18 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/projects/:id/preview", async (req: any, res) => {
+  app.get("/api/files/:id/preview", async (req: any, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
       const userId = req.user?.claims?.sub || null;
-      const project = await storage.getProject(id);
+      const file = await storage.getProjectFile(id);
 
-      if (!project) {
-        return res.status(404).json({ message: "Project not found" });
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
       }
 
-      if (project.userId && project.userId !== userId) {
+      const project = await storage.getProject(file.projectId);
+      if (project?.userId && project.userId !== userId) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -485,12 +567,12 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Audio preview is a Pro feature." });
       }
 
-      if (!project.processedFilePath || !fs.existsSync(project.processedFilePath)) {
+      if (!file.processedFilePath || !fs.existsSync(file.processedFilePath)) {
         return res.status(404).json({ message: "Processed file not found" });
       }
 
-      const stat = fs.statSync(project.processedFilePath);
-      const ext = project.outputFormat || "mp3";
+      const stat = fs.statSync(file.processedFilePath);
+      const ext = file.outputFormat || "mp3";
       const mimeTypes: Record<string, string> = {
         mp3: "audio/mpeg",
         wav: "audio/wav",
@@ -509,9 +591,9 @@ export async function registerRoutes(
         res.status(206);
         res.setHeader("Content-Range", `bytes ${start}-${end}/${stat.size}`);
         res.setHeader("Content-Length", end - start + 1);
-        fs.createReadStream(project.processedFilePath, { start, end }).pipe(res);
+        fs.createReadStream(file.processedFilePath, { start, end }).pipe(res);
       } else {
-        fs.createReadStream(project.processedFilePath).pipe(res);
+        fs.createReadStream(file.processedFilePath).pipe(res);
       }
     } catch (err) {
       console.error("Error streaming preview:", err);
@@ -527,69 +609,6 @@ export async function registerRoutes(
       console.error("Error getting publishable key:", err);
       res.status(500).json({ message: "Failed to get Stripe key" });
     }
-  });
-
-  app.get("/api/stripe/debug", async (req, res) => {
-    const info: any = {
-      nodeEnv: process.env.NODE_ENV,
-      isDeployment: process.env.REPLIT_DEPLOYMENT === '1',
-      hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
-      secretKeyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 12) + '...' + process.env.STRIPE_SECRET_KEY?.slice(-4),
-      hasPublishableKey: !!process.env.STRIPE_PUBLISHABLE_KEY,
-      hasConnectorHostname: !!process.env.REPLIT_CONNECTORS_HOSTNAME,
-      hasReplIdentity: !!process.env.REPL_IDENTITY,
-      hasWebReplRenewal: !!process.env.WEB_REPL_RENEWAL,
-    };
-
-    const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-    const xReplitToken = process.env.REPL_IDENTITY
-      ? 'repl ' + process.env.REPL_IDENTITY
-      : process.env.WEB_REPL_RENEWAL
-        ? 'depl ' + process.env.WEB_REPL_RENEWAL
-        : null;
-
-    for (const env of ['production', 'development']) {
-      try {
-        if (xReplitToken && hostname) {
-          const url = new URL(`https://${hostname}/api/v2/connection`);
-          url.searchParams.set('include_secrets', 'true');
-          url.searchParams.set('connector_names', 'stripe');
-          url.searchParams.set('environment', env);
-          const resp = await fetch(url.toString(), {
-            headers: { 'Accept': 'application/json', 'X_REPLIT_TOKEN': xReplitToken }
-          });
-          const data = await resp.json();
-          const conn = data.items?.[0];
-          info[`connector_${env}`] = {
-            found: !!conn,
-            hasSecret: !!conn?.settings?.secret,
-            hasPublishable: !!conn?.settings?.publishable,
-            secretPrefix: conn?.settings?.secret ? conn.settings.secret.substring(0, 12) + '...' : null,
-            itemCount: data.items?.length || 0,
-          };
-        }
-      } catch (err: any) {
-        info[`connector_${env}`] = { error: err.message };
-      }
-    }
-
-    try {
-      const stripe = await getUncachableStripeClient();
-      const products = await stripe.products.list({ active: true, limit: 1 });
-      info.stripeApiWorks = true;
-      info.stripeProductCount = products.data.length;
-    } catch (err: any) {
-      info.stripeApiWorks = false;
-      info.stripeApiError = err.message;
-    }
-    try {
-      const dbProducts = await stripeService.listProductsWithPrices();
-      info.dbProductRows = (dbProducts as any[]).length;
-    } catch (err: any) {
-      info.dbProductRows = 0;
-      info.dbError = err.message;
-    }
-    res.json(info);
   });
 
   app.get("/api/stripe/products", async (req, res) => {
@@ -640,63 +659,59 @@ export async function registerRoutes(
           unit_amount: 999,
           currency: 'usd',
           recurring: { interval: 'month' },
-          metadata: { plan: 'monthly' }
         });
         await stripe.prices.create({
           product: quietCutterPro.id,
           unit_amount: 7999,
           currency: 'usd',
           recurring: { interval: 'year' },
-          metadata: { plan: 'yearly' }
         });
       }
 
-      const stripePrices = await stripe.prices.list({ product: quietCutterPro.id, active: true });
-
-      try {
-        const stripeSync = await getStripeSync();
-        await stripeSync.syncBackfill();
-        console.log("Stripe data synced to database");
-      } catch (syncErr) {
-        console.log("Sync to database deferred, serving from API");
-      }
-
-      const apiData = [{
+      const prices = await stripe.prices.list({ product: quietCutterPro.id, active: true });
+      const result = {
         id: quietCutterPro.id,
         name: quietCutterPro.name,
         description: quietCutterPro.description,
         active: quietCutterPro.active,
         metadata: quietCutterPro.metadata,
-        prices: stripePrices.data.map(p => ({
+        prices: prices.data.map(p => ({
           id: p.id,
           unit_amount: p.unit_amount,
           currency: p.currency,
           recurring: p.recurring,
           active: p.active,
-        }))
-      }];
+        })),
+      };
 
-      res.json({ data: apiData });
+      res.json({ data: [result] });
     } catch (err) {
-      console.error("Error fetching products:", err);
+      console.error("Error fetching stripe products:", err);
       res.status(500).json({ message: "Failed to fetch products" });
     }
   });
 
-  app.post("/api/stripe/checkout", async (req, res) => {
+  app.post("/api/stripe/checkout", async (req: any, res) => {
     try {
       const { priceId } = req.body;
-      const user = (req as any).user;
-      
       if (!priceId) {
         return res.status(400).json({ message: "Price ID is required" });
       }
-      
+
+      const userId = req.user?.claims?.sub || null;
       let customerId: string;
       
-      if (user?.claims?.email) {
-        const customer = await stripeService.createCustomer(user.claims.email, user.claims.sub);
-        customerId = customer.id;
+      if (userId) {
+        const existingResult = await db.execute(
+          sql`SELECT id FROM stripe.customers WHERE metadata->>'userId' = ${userId} LIMIT 1`
+        );
+        if (existingResult.rows?.length > 0) {
+          customerId = existingResult.rows[0].id as string;
+        } else {
+          const email = req.user?.claims?.email || `${userId}@quietcutter.app`;
+          const customer = await stripeService.createCustomer(email, userId);
+          customerId = customer.id;
+        }
       } else {
         const customer = await stripeService.createCustomer("guest@quietcutter.com", "guest");
         customerId = customer.id;
@@ -733,14 +748,14 @@ async function getAudioDuration(filePath: string): Promise<number | null> {
   }
 }
 
-async function processAudio(projectId: number, inputPath: string, threshold: number, minDuration: number, isVideo: boolean = false, outputFormat: string = "mp3") {
+async function processAudio(fileId: number, inputPath: string, threshold: number, minDuration: number, isVideo: boolean = false, outputFormat: string = "mp3") {
   const { exec } = await import("child_process");
   const { promisify } = await import("util");
   const execAsync = promisify(exec);
   const startTime = Date.now();
   
   try {
-    await storage.updateProject(projectId, { status: "processing" });
+    await storage.updateProjectFile(fileId, { status: "processing" });
     
     let audioInputPath = inputPath;
     
@@ -778,7 +793,7 @@ async function processAudio(projectId: number, inputPath: string, threshold: num
       try { fs.unlinkSync(audioInputPath); } catch {}
     }
     
-    await storage.updateProject(projectId, { 
+    await storage.updateProjectFile(fileId, { 
       status: "completed",
       processedFilePath: outputPath,
       originalDurationSec: originalDuration,
@@ -788,6 +803,6 @@ async function processAudio(projectId: number, inputPath: string, threshold: num
   } catch (err) {
     console.error("Error processing audio:", err);
     const processingTime = Date.now() - startTime;
-    await storage.updateProject(projectId, { status: "failed", processingTimeMs: processingTime });
+    await storage.updateProjectFile(fileId, { status: "failed", processingTimeMs: processingTime });
   }
 }

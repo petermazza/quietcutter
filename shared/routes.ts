@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { insertProjectSchema } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -14,15 +13,13 @@ export const errorSchemas = {
   }),
 };
 
-const projectResponseSchema = z.object({
+const projectFileResponseSchema = z.object({
   id: z.number(),
-  name: z.string(),
+  projectId: z.number(),
   originalFileName: z.string(),
   originalFilePath: z.string().nullable().optional(),
   processedFilePath: z.string().nullable().optional(),
   status: z.string(),
-  userId: z.string().nullable().optional(),
-  isFavorite: z.boolean().nullable().optional(),
   silenceThreshold: z.number(),
   minSilenceDuration: z.number(),
   outputFormat: z.string().optional(),
@@ -32,6 +29,15 @@ const projectResponseSchema = z.object({
   processedDurationSec: z.number().nullable().optional(),
   processingTimeMs: z.number().nullable().optional(),
   createdAt: z.string().nullable(),
+});
+
+const projectResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  userId: z.string().nullable().optional(),
+  isFavorite: z.boolean().nullable().optional(),
+  createdAt: z.string().nullable(),
+  files: z.array(projectFileResponseSchema).optional(),
 });
 
 export const api = {
@@ -54,7 +60,7 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/projects',
-      input: insertProjectSchema,
+      input: z.object({ name: z.string().min(1) }),
       responses: {
         201: projectResponseSchema,
         400: errorSchemas.validation,
@@ -63,7 +69,7 @@ export const api = {
     update: {
       method: 'PATCH' as const,
       path: '/api/projects/:id',
-      input: insertProjectSchema.partial(),
+      input: z.object({ name: z.string().optional(), isFavorite: z.boolean().optional() }),
       responses: {
         200: projectResponseSchema,
         400: errorSchemas.validation,
@@ -93,7 +99,6 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
   return url;
 }
 
-export type ProjectInput = z.infer<typeof api.projects.create.input>;
-export type ProjectResponse = z.infer<typeof api.projects.create.responses[201]>;
-export type ProjectUpdateInput = z.infer<typeof api.projects.update.input>;
+export type ProjectResponse = z.infer<typeof projectResponseSchema>;
+export type ProjectFileResponse = z.infer<typeof projectFileResponseSchema>;
 export type ProjectsListResponse = z.infer<typeof api.projects.list.responses[200]>;

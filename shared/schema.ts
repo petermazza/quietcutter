@@ -9,13 +9,19 @@ export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id"),
   name: text("name").notNull(),
+  isFavorite: boolean("is_favorite").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const projectFiles = pgTable("project_files", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull(),
   originalFileName: text("original_file_name").notNull(),
   originalFilePath: text("original_file_path"),
   processedFilePath: text("processed_file_path"),
   status: text("status").notNull().default("pending"),
   silenceThreshold: integer("silence_threshold").notNull().default(-40),
   minSilenceDuration: integer("min_silence_duration").notNull().default(500),
-  isFavorite: boolean("is_favorite").notNull().default(false),
   outputFormat: text("output_format").notNull().default("mp3"),
   fileType: text("file_type").default("audio"),
   fileSizeBytes: integer("file_size_bytes"),
@@ -51,15 +57,15 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
 
-export type CreateProjectRequest = {
-  name: string;
-  originalFileName: string;
-  silenceThreshold?: number;
-  minSilenceDuration?: number;
-};
+export const insertProjectFileSchema = createInsertSchema(projectFiles).omit({
+  id: true,
+  createdAt: true,
+});
 
-export type UpdateProjectRequest = Partial<InsertProject>;
-export type ProjectResponse = Project;
+export type InsertProjectFile = z.infer<typeof insertProjectFileSchema>;
+export type ProjectFile = typeof projectFiles.$inferSelect;
+
+export type UpdateProjectFileRequest = Partial<InsertProjectFile>;
 
 export const insertCustomPresetSchema = createInsertSchema(customPresets).omit({
   id: true,

@@ -9,24 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, Star, Download, Trash2, Loader2, LogOut, Video, Crown, Save, Play, Pause, Package, Lock, X, FileAudio, FileVideo, Timer, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, Star, Download, Trash2, Loader2, LogOut, Video, Crown, Save, Play, Pause, Package, Lock, X, FileAudio, FileVideo, Timer, ArrowRight, ChevronDown, ChevronUp, Plus, FolderOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import type { ProjectResponse } from "@shared/routes";
+import type { ProjectResponse, ProjectFileResponse } from "@shared/routes";
 import logoImage from "@assets/transparent_output_1770321954939.png";
 
 const presets = [
@@ -71,23 +57,20 @@ export default function Home() {
   const [outputFormat, setOutputFormat] = useState("mp3");
   const [presetName, setPresetName] = useState("");
   const [showSavePreset, setShowSavePreset] = useState(false);
-  const [playingProjectId, setPlayingProjectId] = useState<number | null>(null);
+  const [playingFileId, setPlayingFileId] = useState<number | null>(null);
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [pricingData, setPricingData] = useState<any>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
-  const [sidebarFilter, setSidebarFilter] = useState<"all" | "favorites">("all");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showPresetsSection, setShowPresetsSection] = useState(true);
+  const [showNewProjectInput, setShowNewProjectInput] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wavesurferInstances = useRef<Record<number, any>>({});
 
   const { data: projects, refetch: refetchProjects } = useQuery<ProjectResponse[]>({
     queryKey: ["/api/projects"],
-  });
-
-  const { data: favorites } = useQuery<ProjectResponse[]>({
-    queryKey: ["/api/projects/favorites"],
   });
 
   const { data: subscriptionData } = useQuery<{ isPro: boolean }>({
@@ -100,15 +83,40 @@ export default function Home() {
     enabled: isAuthenticated,
   });
 
-  const deleteMutation = useMutation({
+  const selectedProject = projects?.find(p => p.id === (selectedProjectId ? parseInt(selectedProjectId) : -1)) || null;
+
+  const createProjectMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiRequest("POST", "/api/projects", { name });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      setSelectedProjectId(String(data.id));
+      setShowNewProjectInput(false);
+      setNewProjectName("");
+      toast({ title: "Project created" });
+    },
+  });
+
+  const deleteProjectMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/projects/${id}`);
     },
     onSuccess: (_, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects/favorites"] });
-      if (selectedProjectId === deletedId) setSelectedProjectId(null);
+      if (selectedProjectId === String(deletedId)) setSelectedProjectId(null);
       toast({ title: "Project deleted" });
+    },
+  });
+
+  const deleteFileMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/files/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({ title: "File deleted" });
     },
   });
 
@@ -119,7 +127,6 @@ export default function Home() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects/favorites"] });
     },
   });
 
@@ -210,6 +217,10 @@ export default function Home() {
       formData.append("outputFormat", outputFormat);
     }
 
+    if (selectedProjectId) {
+      formData.append("projectId", selectedProjectId);
+    }
+
     try {
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -223,9 +234,8 @@ export default function Home() {
       }
 
       const responseData = await res.json();
-      const newProject = Array.isArray(responseData) ? responseData[0] : responseData;
-      if (newProject?.id) {
-        setSelectedProjectId(newProject.id);
+      if (responseData?.id) {
+        setSelectedProjectId(String(responseData.id));
       }
 
       toast({
@@ -240,8 +250,10 @@ export default function Home() {
       const pollInterval = setInterval(async () => {
         await refetchProjects();
         const updatedProjects = queryClient.getQueryData<ProjectResponse[]>(["/api/projects"]);
-        const processing = updatedProjects?.some(p => p.status === "processing" || p.status === "pending");
-        if (!processing) {
+        const hasProcessing = updatedProjects?.some(p =>
+          p.files?.some(f => f.status === "processing" || f.status === "pending")
+        );
+        if (!hasProcessing) {
           clearInterval(pollInterval);
         }
       }, 2000);
@@ -278,38 +290,38 @@ export default function Home() {
     }
   };
 
-  const handleDownload = (projectId: number) => {
-    window.open(`/api/projects/${projectId}/download`, "_blank");
+  const handleDownload = (fileId: number) => {
+    window.open(`/api/files/${fileId}/download`, "_blank");
   };
 
   const handleBulkDownload = () => {
     window.open("/api/projects/bulk-download", "_blank");
   };
 
-  const handlePreview = useCallback((projectId: number) => {
-    if (playingProjectId === projectId) {
+  const handlePreview = useCallback((fileId: number) => {
+    if (playingFileId === fileId) {
       audioRef.current?.pause();
-      setPlayingProjectId(null);
+      setPlayingFileId(null);
       return;
     }
     if (audioRef.current) audioRef.current.pause();
-    const audio = new Audio(`/api/projects/${projectId}/preview`);
-    audio.onended = () => setPlayingProjectId(null);
+    const audio = new Audio(`/api/files/${fileId}/preview`);
+    audio.onended = () => setPlayingFileId(null);
     audio.onerror = () => {
-      setPlayingProjectId(null);
+      setPlayingFileId(null);
       toast({ title: "Preview error", description: "Could not play audio preview.", variant: "destructive" });
     };
     audio.play();
     audioRef.current = audio;
-    setPlayingProjectId(projectId);
-  }, [playingProjectId, toast]);
+    setPlayingFileId(fileId);
+  }, [playingFileId, toast]);
 
   useEffect(() => {
     return () => { if (audioRef.current) audioRef.current.pause(); };
   }, []);
 
-  const initWaveform = useCallback(async (projectId: number, el: HTMLDivElement | null) => {
-    if (!el || wavesurferInstances.current[projectId]) return;
+  const initWaveform = useCallback(async (fileId: number, el: HTMLDivElement | null) => {
+    if (!el || wavesurferInstances.current[fileId]) return;
     if (!isPro) return;
     try {
       const WaveSurfer = (await import("wavesurfer.js")).default;
@@ -324,9 +336,9 @@ export default function Home() {
         cursorWidth: 0,
         normalize: true,
         interact: false,
-        url: `/api/projects/${projectId}/preview`,
+        url: `/api/files/${fileId}/preview`,
       });
-      wavesurferInstances.current[projectId] = ws;
+      wavesurferInstances.current[fileId] = ws;
     } catch {}
   }, [isPro]);
 
@@ -376,18 +388,16 @@ export default function Home() {
     }
   };
 
-  const sidebarProjects = sidebarFilter === "favorites" ? favorites : projects;
-  const selectedProject = projects?.find(p => p.id === selectedProjectId) || null;
-  const activeProject = projects?.find(p => p.status === "processing" || p.status === "pending");
-  const completedCount = projects?.filter(p => p.status === "completed").length ?? 0;
+  const activeFiles = projects?.flatMap(p => p.files || []).filter(f => f.status === "processing" || f.status === "pending") || [];
+  const completedFileCount = projects?.flatMap(p => p.files || []).filter(f => f.status === "completed").length ?? 0;
 
   useEffect(() => {
     if (!selectedProjectId && projects && projects.length > 0) {
-      const active = projects.find(p => p.status === "processing" || p.status === "pending");
-      if (active) {
-        setSelectedProjectId(active.id);
+      const withActiveFiles = projects.find(p => p.files?.some(f => f.status === "processing" || f.status === "pending"));
+      if (withActiveFiles) {
+        setSelectedProjectId(String(withActiveFiles.id));
       } else {
-        setSelectedProjectId(projects[0].id);
+        setSelectedProjectId(String(projects[0].id));
       }
     }
   }, [projects, selectedProjectId]);
@@ -441,576 +451,376 @@ export default function Home() {
         </div>
       </header>
 
-      <SidebarProvider style={{ "--sidebar-width": "18rem", "--sidebar-width-icon": "3rem" } as React.CSSProperties}>
-        <div className="flex flex-1 overflow-hidden w-full">
-          {/* Sidebar - Project List */}
-          <Sidebar>
-            <SidebarHeader className="p-3">
-              <div className="flex items-center gap-1 mb-2">
-                <Button
-                  variant={sidebarFilter === "all" ? "default" : "ghost"}
-                  size="sm"
-                  className="flex-1 text-xs gap-1"
-                  onClick={() => setSidebarFilter("all")}
-                  data-testid="button-filter-all"
-                >
-                  All ({projects?.length ?? 0})
-                </Button>
-                <Button
-                  variant={sidebarFilter === "favorites" ? "default" : "ghost"}
-                  size="sm"
-                  className="flex-1 text-xs gap-1"
-                  onClick={() => setSidebarFilter("favorites")}
-                  data-testid="button-filter-favorites"
-                >
-                  <Star className="w-3 h-3" />
-                  Saved
-                </Button>
-              </div>
-              {isPro && completedCount > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs gap-1"
-                  onClick={handleBulkDownload}
-                  data-testid="button-bulk-download"
-                >
-                  <Package className="w-3 h-3" />
-                  Download All as ZIP
-                </Button>
-              )}
-            </SidebarHeader>
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
 
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupLabel>Projects</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {sidebarProjects && sidebarProjects.length > 0 ? (
-                      sidebarProjects.map((project) => (
-                        <SidebarMenuItem key={project.id}>
-                          <SidebarMenuButton
-                            isActive={selectedProjectId === project.id}
-                            onClick={() => setSelectedProjectId(project.id)}
-                            data-testid={`project-item-${project.id}`}
-                            className="h-auto py-2"
-                          >
-                            <div className="flex items-center gap-2 w-full">
-                              {project.fileType === "video" ? (
-                                <FileVideo className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                              ) : (
-                                <FileAudio className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{project.name}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <StatusDot status={project.status} />
-                                  <span className="text-[10px] text-muted-foreground capitalize">{project.status}</span>
-                                  {project.fileSizeBytes && (
-                                    <span className="text-[10px] text-muted-foreground">{formatFileSize(project.fileSizeBytes)}</span>
-                                  )}
-                                </div>
-                              </div>
-                              {project.isFavorite && <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 flex-shrink-0" />}
-                            </div>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center">
-                        <p className="text-xs text-muted-foreground">
-                          {sidebarFilter === "favorites" ? "No saved projects" : "No projects yet"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Upload a file to get started</p>
-                      </div>
-                    )}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-
-            {!isPro && (
-              <SidebarFooter className="p-3">
-                <p className="text-[10px] text-muted-foreground mb-2 text-center">Free: 1 project, 100MB limit</p>
-                <Button size="sm" className="w-full rounded-full gap-1 bg-gradient-to-r from-blue-500 to-purple-500 text-xs" onClick={handleUpgrade} data-testid="button-upgrade-sidebar">
-                  <Crown className="w-3 h-3" />
-                  Upgrade to Pro
-                </Button>
-              </SidebarFooter>
-            )}
-          </Sidebar>
-
-          {/* Main Content */}
-          <main className="flex-1 overflow-y-auto flex flex-col">
-            <div className="md:hidden flex items-center gap-2 p-2 border-b border-border/50">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <span className="text-xs text-muted-foreground">Projects</span>
-            </div>
-          <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
-
-            {/* Active Processing Banner */}
-            {activeProject && (
-              <Card className="border-blue-500/30 bg-blue-500/5">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="w-5 h-5 text-blue-400 animate-spin flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">Processing: {activeProject.originalFileName}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Removing silence from your {activeProject.fileType || "audio"} file...</p>
-                    </div>
-                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 flex-shrink-0">
-                      {activeProject.status === "pending" ? "In Queue" : "Processing"}
-                    </Badge>
+          {activeFiles.length > 0 && (
+            <Card className="border-blue-500/30 bg-blue-500/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 text-blue-400 animate-spin flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">Processing {activeFiles.length} file{activeFiles.length > 1 ? "s" : ""}...</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Removing silence from your files</p>
                   </div>
-                  <Progress className="mt-3 h-1.5" value={activeProject.status === "processing" ? 65 : 15} />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Upload Section */}
-            <Card>
-              <CardContent className="p-4 md:p-5">
-                <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
-                  <h2 className="font-semibold text-sm">Upload Audio / Video</h2>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {isPro && (
-                      <Badge className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border-blue-500/30" data-testid="badge-pro-batch">
-                        Up to 3 files
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-muted-foreground" data-testid="badge-size-limit">
-                      {isPro ? "500MB" : "100MB"} max
-                    </Badge>
-                  </div>
+                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 flex-shrink-0">
+                    {activeFiles.some(f => f.status === "processing") ? "Processing" : "In Queue"}
+                  </Badge>
                 </div>
-
-                <div
-                  className={`border-2 border-dashed rounded-md p-8 text-center transition-colors cursor-pointer ${
-                    isDragging ? "border-primary bg-primary/5" : "border-border"
-                  } ${isUploading ? "pointer-events-none opacity-50" : ""}`}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onClick={() => fileInputRef.current?.click()}
-                  data-testid="dropzone-upload"
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".mp3,.wav,.ogg,.flac,.m4a,.mp4,.mov,.avi,.mkv,.webm"
-                    className="hidden"
-                    onChange={handleFileInputChange}
-                    multiple={isPro}
-                    data-testid="input-file"
-                  />
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-8 h-8 mx-auto mb-3 text-primary animate-spin" />
-                      <p className="text-sm">Uploading...</p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex justify-center gap-2 mb-3">
-                        <Upload className="w-7 h-7 text-muted-foreground" />
-                        <Video className="w-7 h-7 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm">
-                        <span className="text-primary cursor-pointer">Click to upload</span>
-                        {" "}or drag and drop
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1">Audio: MP3, WAV, OGG, FLAC, M4A &middot; Video: MP4, MOV, AVI, MKV, WEBM</p>
-                    </>
-                  )}
-                </div>
+                <Progress className="mt-3 h-1.5" value={activeFiles.some(f => f.status === "processing") ? 65 : 15} />
               </CardContent>
             </Card>
+          )}
 
-            {/* Presets & Settings */}
-            <Card>
-              <CardContent className="p-4 md:p-5">
-                <button
-                  className="w-full flex items-center justify-between gap-2"
-                  onClick={() => setShowPresetsSection(!showPresetsSection)}
-                  data-testid="button-toggle-presets"
+          <Card>
+            <CardContent className="p-4 md:p-5">
+              <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
+                <h2 className="font-semibold text-sm">Upload Audio / Video</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isPro && (
+                    <Badge className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border-blue-500/30" data-testid="badge-pro-batch">
+                      Up to 3 files
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-muted-foreground" data-testid="badge-size-limit">
+                    {isPro ? "500MB" : "100MB"} max
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Project selector for upload destination */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="text-xs text-muted-foreground">Upload to:</span>
+                <Select
+                  value={selectedProjectId || "__new__"}
+                  onValueChange={(val) => {
+                    if (val === "__new__") {
+                      setSelectedProjectId(null);
+                    } else {
+                      setSelectedProjectId(val);
+                    }
+                  }}
                 >
-                  <h2 className="font-semibold text-sm">Presets & Settings</h2>
-                  {showPresetsSection ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </button>
+                  <SelectTrigger className="w-48" data-testid="select-upload-project">
+                    <SelectValue placeholder="New Project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__new__">New Project</SelectItem>
+                    {projects?.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                {showPresetsSection && (
-                  <div className="mt-4 space-y-4">
-                    {/* Output Format (Pro) */}
-                    {isPro && (
-                      <div className="flex items-center justify-between gap-4 p-3 rounded-md bg-background/50 border border-border/50">
-                        <div className="flex items-center gap-2">
-                          <Crown className="w-4 h-4 text-amber-400" />
-                          <span className="text-sm font-medium">Output Format</span>
-                        </div>
-                        <Select value={outputFormat} onValueChange={setOutputFormat}>
-                          <SelectTrigger className="w-28" data-testid="select-output-format">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="mp3">MP3 (320k)</SelectItem>
-                            <SelectItem value="wav">WAV</SelectItem>
-                            <SelectItem value="flac">FLAC</SelectItem>
-                          </SelectContent>
-                        </Select>
+              <div
+                className={`border-2 border-dashed rounded-md p-8 text-center transition-colors cursor-pointer ${
+                  isDragging ? "border-primary bg-primary/5" : "border-border"
+                } ${isUploading ? "pointer-events-none opacity-50" : ""}`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="dropzone-upload"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".mp3,.wav,.ogg,.flac,.m4a,.mp4,.mov,.avi,.mkv,.webm"
+                  className="hidden"
+                  onChange={handleFileInputChange}
+                  multiple={isPro}
+                  data-testid="input-file"
+                />
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-8 h-8 mx-auto mb-3 text-primary animate-spin" />
+                    <p className="text-sm">Uploading...</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-center gap-2 mb-3">
+                      <Upload className="w-7 h-7 text-muted-foreground" />
+                      <Video className="w-7 h-7 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm">
+                      <span className="text-primary cursor-pointer">Click to upload</span>
+                      {" "}or drag and drop
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Audio: MP3, WAV, OGG, FLAC, M4A &middot; Video: MP4, MOV, AVI, MKV, WEBM</p>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 md:p-5">
+              <button
+                className="w-full flex items-center justify-between gap-2"
+                onClick={() => setShowPresetsSection(!showPresetsSection)}
+                data-testid="button-toggle-presets"
+              >
+                <h2 className="font-semibold text-sm">Presets & Settings</h2>
+                {showPresetsSection ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              </button>
+
+              {showPresetsSection && (
+                <div className="mt-4 space-y-4">
+                  {isPro && (
+                    <div className="flex items-center justify-between gap-4 p-3 rounded-md bg-background/50 border border-border/50">
+                      <div className="flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-amber-400" />
+                        <span className="text-sm font-medium">Output Format</span>
                       </div>
-                    )}
+                      <Select value={outputFormat} onValueChange={setOutputFormat}>
+                        <SelectTrigger className="w-28" data-testid="select-output-format">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mp3">MP3 (320k)</SelectItem>
+                          <SelectItem value="wav">WAV</SelectItem>
+                          <SelectItem value="flac">FLAC</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
-                    {/* Quick Presets */}
+                  <div>
+                    <h3 className="text-xs font-medium text-muted-foreground mb-2">Quick Presets</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {presets.map((preset) => (
+                        <Button
+                          key={preset.name}
+                          variant="outline"
+                          onClick={() => handlePresetClick(preset)}
+                          className={`h-auto flex-col py-3 gap-1 relative ${
+                            selectedPreset === preset.name ? "border-primary bg-primary/10" : ""
+                          } ${!preset.free && !isPro ? "opacity-60" : ""}`}
+                          data-testid={`button-preset-${preset.name.toLowerCase().replace(" ", "-")}`}
+                        >
+                          {!preset.free && !isPro && <Lock className="w-3 h-3 absolute top-1.5 right-1.5 text-muted-foreground" />}
+                          <preset.icon className={`w-5 h-5 ${selectedPreset === preset.name ? "text-primary" : "text-muted-foreground"}`} />
+                          <span className="text-xs">{preset.name}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {isPro && customPresets && customPresets.length > 0 && (
                     <div>
-                      <h3 className="text-xs font-medium text-muted-foreground mb-2">Quick Presets</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {presets.map((preset) => (
-                          <Button
-                            key={preset.name}
-                            variant="outline"
-                            onClick={() => handlePresetClick(preset)}
-                            className={`h-auto flex-col py-3 gap-1 relative ${
-                              selectedPreset === preset.name ? "border-primary bg-primary/10" : ""
-                            } ${!preset.free && !isPro ? "opacity-60" : ""}`}
-                            data-testid={`button-preset-${preset.name.toLowerCase().replace(" ", "-")}`}
-                          >
-                            {!preset.free && !isPro && <Lock className="w-3 h-3 absolute top-1.5 right-1.5 text-muted-foreground" />}
-                            <preset.icon className={`w-5 h-5 ${selectedPreset === preset.name ? "text-primary" : "text-muted-foreground"}`} />
-                            <span className="text-xs">{preset.name}</span>
-                          </Button>
+                      <h3 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                        <Crown className="w-3 h-3 text-amber-400" />
+                        Saved Presets
+                      </h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {customPresets.map((preset) => (
+                          <div key={preset.id} className="relative">
+                            <Button
+                              variant="outline"
+                              onClick={() => handlePresetClick({ name: preset.name, threshold: preset.silenceThreshold, duration: preset.minSilenceDuration, free: true })}
+                              className={`w-full h-auto flex-col py-2 gap-0.5 ${selectedPreset === preset.name ? "border-primary bg-primary/10" : ""}`}
+                              data-testid={`button-custom-preset-${preset.id}`}
+                            >
+                              <Settings className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-xs truncate max-w-full">{preset.name}</span>
+                              <span className="text-[10px] text-muted-foreground">{preset.silenceThreshold}dB / {preset.minSilenceDuration}ms</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute top-0.5 right-0.5 w-5 h-5"
+                              onClick={(e) => { e.stopPropagation(); deletePresetMutation.mutate(preset.id); }}
+                              data-testid={`button-delete-preset-${preset.id}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
                         ))}
                       </div>
                     </div>
+                  )}
 
-                    {/* Saved Presets (Pro) */}
-                    {isPro && customPresets && customPresets.length > 0 && (
+                  <div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full gap-2"
+                      onClick={() => setShowCustomSettings(!showCustomSettings)}
+                      data-testid="button-custom-settings"
+                    >
+                      <Settings className="w-4 h-4" />
+                      {showCustomSettings ? "Hide Custom Settings" : "Custom Settings"}
+                    </Button>
+                  </div>
+
+                  {showCustomSettings && (
+                    <div className="space-y-4 p-3 rounded-md bg-background/50 border border-border/50">
                       <div>
-                        <h3 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                          <Crown className="w-3 h-3 text-amber-400" />
-                          Saved Presets
-                        </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                          {customPresets.map((preset) => (
-                            <div key={preset.id} className="relative">
+                        <div className="flex justify-between gap-2 mb-2 flex-wrap">
+                          <label className="text-xs font-medium">Silence Threshold: {silenceThreshold}dB</label>
+                        </div>
+                        <Slider
+                          value={[silenceThreshold]}
+                          onValueChange={(v) => setSilenceThreshold(v[0])}
+                          min={-60}
+                          max={-10}
+                          step={1}
+                          data-testid="slider-threshold"
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-1">Lower = more silence detected (-60dB quietest, -10dB loudest)</p>
+                      </div>
+                      <div>
+                        <div className="flex justify-between gap-2 mb-2 flex-wrap">
+                          <label className="text-xs font-medium flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Min Silence Duration: {minSilenceDuration}s
+                          </label>
+                        </div>
+                        <Slider
+                          value={[minSilenceDuration]}
+                          onValueChange={(v) => setMinSilenceDuration(v[0])}
+                          min={0.1}
+                          max={2}
+                          step={0.1}
+                          data-testid="slider-duration"
+                        />
+                      </div>
+                      {isPro && (
+                        <div className="border-t border-border/50 pt-3">
+                          {!showSavePreset ? (
+                            <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowSavePreset(true)} data-testid="button-show-save-preset">
+                              <Save className="w-4 h-4" />
+                              Save as Preset
+                            </Button>
+                          ) : (
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Preset name..."
+                                value={presetName}
+                                onChange={(e) => setPresetName(e.target.value)}
+                                className="flex-1"
+                                data-testid="input-preset-name"
+                              />
                               <Button
-                                variant="outline"
-                                onClick={() => handlePresetClick({ name: preset.name, threshold: preset.silenceThreshold, duration: preset.minSilenceDuration, free: true })}
-                                className={`w-full h-auto flex-col py-2 gap-0.5 ${selectedPreset === preset.name ? "border-primary bg-primary/10" : ""}`}
-                                data-testid={`button-custom-preset-${preset.id}`}
+                                size="sm"
+                                disabled={!presetName.trim() || savePresetMutation.isPending}
+                                onClick={() => savePresetMutation.mutate({ name: presetName.trim(), silenceThreshold, minSilenceDuration: Math.round(minSilenceDuration * 1000) })}
+                                data-testid="button-save-preset"
                               >
-                                <Settings className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-xs truncate max-w-full">{preset.name}</span>
-                                <span className="text-[10px] text-muted-foreground">{preset.silenceThreshold}dB / {preset.minSilenceDuration}ms</span>
+                                {savePresetMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute top-0.5 right-0.5 w-5 h-5"
-                                onClick={(e) => { e.stopPropagation(); deletePresetMutation.mutate(preset.id); }}
-                                data-testid={`button-delete-preset-${preset.id}`}
-                              >
-                                <X className="w-3 h-3" />
+                              <Button variant="ghost" size="sm" onClick={() => { setShowSavePreset(false); setPresetName(""); }} data-testid="button-cancel-save-preset">
+                                Cancel
                               </Button>
                             </div>
-                          ))}
+                          )}
                         </div>
-                      </div>
-                    )}
-
-                    {/* Manual Adjustment */}
-                    <div>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="w-full gap-2"
-                        onClick={() => setShowCustomSettings(!showCustomSettings)}
-                        data-testid="button-custom-settings"
-                      >
-                        <Settings className="w-4 h-4" />
-                        {showCustomSettings ? "Hide Custom Settings" : "Custom Settings"}
-                      </Button>
+                      )}
                     </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                    {showCustomSettings && (
-                      <div className="space-y-4 p-3 rounded-md bg-background/50 border border-border/50">
-                        <div>
-                          <div className="flex justify-between gap-2 mb-2 flex-wrap">
-                            <label className="text-xs font-medium">Silence Threshold: {silenceThreshold}dB</label>
-                          </div>
-                          <Slider
-                            value={[silenceThreshold]}
-                            onValueChange={(v) => setSilenceThreshold(v[0])}
-                            min={-60}
-                            max={-10}
-                            step={1}
-                            data-testid="slider-threshold"
-                          />
-                          <p className="text-[10px] text-muted-foreground mt-1">Lower = more silence detected (-60dB quietest, -10dB loudest)</p>
-                        </div>
-                        <div>
-                          <div className="flex justify-between gap-2 mb-2 flex-wrap">
-                            <label className="text-xs font-medium flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              Min Silence Duration: {minSilenceDuration}s
-                            </label>
-                          </div>
-                          <Slider
-                            value={[minSilenceDuration]}
-                            onValueChange={(v) => setMinSilenceDuration(v[0])}
-                            min={0.1}
-                            max={2}
-                            step={0.1}
-                            data-testid="slider-duration"
-                          />
-                        </div>
-                        {isPro && (
-                          <div className="border-t border-border/50 pt-3">
-                            {!showSavePreset ? (
-                              <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowSavePreset(true)} data-testid="button-show-save-preset">
-                                <Save className="w-4 h-4" />
-                                Save as Preset
-                              </Button>
-                            ) : (
-                              <div className="flex gap-2">
-                                <Input
-                                  placeholder="Preset name..."
-                                  value={presetName}
-                                  onChange={(e) => setPresetName(e.target.value)}
-                                  className="flex-1"
-                                  data-testid="input-preset-name"
-                                />
-                                <Button
-                                  size="sm"
-                                  disabled={!presetName.trim() || savePresetMutation.isPending}
-                                  onClick={() => savePresetMutation.mutate({ name: presetName.trim(), silenceThreshold, minSilenceDuration: Math.round(minSilenceDuration * 1000) })}
-                                  data-testid="button-save-preset"
-                                >
-                                  {savePresetMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => { setShowSavePreset(false); setPresetName(""); }} data-testid="button-cancel-save-preset">
-                                  Cancel
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+          {/* Projects Section */}
+          <div>
+            <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
+              <h2 className="font-semibold text-sm">Your Projects</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                {isPro && completedFileCount > 0 && (
+                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={handleBulkDownload} data-testid="button-bulk-download">
+                    <Package className="w-3 h-3" />
+                    Download All
+                  </Button>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Selected Project Detail */}
-            {selectedProject && (
-              <Card data-testid="card-project-detail">
-                <CardContent className="p-4 md:p-5">
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {selectedProject.fileType === "video" ? (
-                        <div className="w-10 h-10 rounded-md bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                          <FileVideo className="w-5 h-5 text-purple-400" />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-md bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                          <FileAudio className="w-5 h-5 text-blue-400" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-sm truncate" data-testid="text-project-name">{selectedProject.name}</h3>
-                        <p className="text-[10px] text-muted-foreground truncate">{selectedProject.originalFileName}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <StatusBadge status={selectedProject.status} />
-                    </div>
-                  </div>
-
-                  {/* Project Metadata */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                    <MetaItem label="File Size" value={formatFileSize(selectedProject.fileSizeBytes)} />
-                    <MetaItem label="Format" value={(selectedProject.outputFormat || "mp3").toUpperCase()} />
-                    <MetaItem label="Threshold" value={`${selectedProject.silenceThreshold}dB`} />
-                    <MetaItem label="Min Duration" value={`${selectedProject.minSilenceDuration}ms`} />
-                  </div>
-
-                  {/* Before/After Duration (Pro) */}
-                  {selectedProject.status === "completed" && selectedProject.originalDurationSec != null && (
-                    <div className="p-3 rounded-md bg-background/50 border border-border/50 mb-4">
-                      <h4 className="text-xs font-medium text-muted-foreground mb-2">Silence Removed</h4>
-                      <div className="flex items-center gap-3">
-                        <div className="text-center flex-1">
-                          <p className="text-lg font-bold" data-testid="text-original-duration">{formatDuration(selectedProject.originalDurationSec)}</p>
-                          <p className="text-[10px] text-muted-foreground">Original</p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <div className="text-center flex-1">
-                          <p className="text-lg font-bold text-green-400" data-testid="text-processed-duration">{formatDuration(selectedProject.processedDurationSec)}</p>
-                          <p className="text-[10px] text-muted-foreground">Processed</p>
-                        </div>
-                        {selectedProject.originalDurationSec != null && selectedProject.processedDurationSec != null && selectedProject.originalDurationSec > 0 && (
-                          <div className="text-center flex-1">
-                            <p className="text-lg font-bold text-amber-400" data-testid="text-silence-removed">
-                              {Math.round(((selectedProject.originalDurationSec - selectedProject.processedDurationSec) / selectedProject.originalDurationSec) * 100)}%
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">Removed</p>
-                          </div>
-                        )}
-                      </div>
-                      {selectedProject.processingTimeMs != null && (
-                        <div className="flex items-center gap-1 mt-2 justify-center">
-                          <Timer className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-[10px] text-muted-foreground">Processed in {(selectedProject.processingTimeMs / 1000).toFixed(1)}s</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Processing Progress */}
-                  {(selectedProject.status === "processing" || selectedProject.status === "pending") && (
-                    <div className="p-3 rounded-md bg-blue-500/5 border border-blue-500/20 mb-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                        <span className="text-sm">{selectedProject.status === "pending" ? "Waiting in queue..." : "Removing silence..."}</span>
-                      </div>
-                      <Progress className="h-1.5" value={selectedProject.status === "processing" ? 65 : 15} />
-                    </div>
-                  )}
-
-                  {/* Failed Status */}
-                  {selectedProject.status === "failed" && (
-                    <div className="p-3 rounded-md bg-red-500/5 border border-red-500/20 mb-4">
-                      <p className="text-sm text-red-400">Processing failed. Try uploading the file again.</p>
-                    </div>
-                  )}
-
-                  {/* Waveform (Pro) */}
-                  {isPro && selectedProject.status === "completed" && (
-                    <div
-                      className="mb-4 rounded-md overflow-hidden bg-background/50 p-2"
-                      ref={(el) => {
-                        if (el && !wavesurferInstances.current[selectedProject.id]) {
-                          initWaveform(selectedProject.id, el);
+                {showNewProjectInput ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      placeholder="Project name..."
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      className="w-40"
+                      data-testid="input-new-project-name"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newProjectName.trim()) {
+                          createProjectMutation.mutate(newProjectName.trim());
                         }
                       }}
-                      data-testid={`waveform-${selectedProject.id}`}
                     />
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {isPro && selectedProject.status === "completed" && (
-                      <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePreview(selectedProject.id)} data-testid={`button-preview-${selectedProject.id}`}>
-                        {playingProjectId === selectedProject.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        {playingProjectId === selectedProject.id ? "Pause" : "Preview"}
-                      </Button>
-                    )}
-                    {selectedProject.status === "completed" && (
-                      <Button size="sm" className="gap-2" onClick={() => handleDownload(selectedProject.id)} data-testid={`button-download-${selectedProject.id}`}>
-                        <Download className="w-4 h-4" />
-                        Download
-                      </Button>
-                    )}
                     <Button
-                      variant="outline"
                       size="sm"
-                      className="gap-2"
-                      onClick={() => favoriteMutation.mutate({ id: selectedProject.id, isFavorite: !selectedProject.isFavorite })}
-                      data-testid={`button-favorite-${selectedProject.id}`}
+                      disabled={!newProjectName.trim() || createProjectMutation.isPending}
+                      onClick={() => createProjectMutation.mutate(newProjectName.trim())}
+                      data-testid="button-create-project"
                     >
-                      <Star className={`w-4 h-4 ${selectedProject.isFavorite ? "fill-yellow-400 text-yellow-400" : ""}`} />
-                      {selectedProject.isFavorite ? "Saved" : "Save"}
+                      {createProjectMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create"}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-2 text-destructive"
-                      onClick={() => deleteMutation.mutate(selectedProject.id)}
-                      data-testid={`button-delete-${selectedProject.id}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
+                    <Button variant="ghost" size="sm" onClick={() => { setShowNewProjectInput(false); setNewProjectName(""); }}>
+                      <X className="w-4 h-4" />
                     </Button>
                   </div>
+                ) : (
+                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowNewProjectInput(true)} data-testid="button-new-project">
+                    <Plus className="w-3 h-3" />
+                    New Project
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {projects && projects.length > 0 ? (
+              <div className="space-y-3">
+                {projects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    isSelected={selectedProjectId === String(project.id)}
+                    isPro={isPro}
+                    playingFileId={playingFileId}
+                    onSelect={() => setSelectedProjectId(selectedProjectId === String(project.id) ? null : String(project.id))}
+                    onDelete={() => deleteProjectMutation.mutate(project.id)}
+                    onDeleteFile={(fileId) => deleteFileMutation.mutate(fileId)}
+                    onDownload={handleDownload}
+                    onPreview={handlePreview}
+                    onFavorite={(isFavorite) => favoriteMutation.mutate({ id: project.id, isFavorite })}
+                    onUpgrade={handleUpgrade}
+                    initWaveform={initWaveform}
+                    wavesurferInstances={wavesurferInstances}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <FolderOpen className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">No projects yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Upload a file above to create your first project</p>
                 </CardContent>
               </Card>
             )}
-
-            {/* Empty State */}
-            {!selectedProject && !activeProject && (
-              <div className="text-center py-12">
-                <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">Upload an audio or video file to get started</p>
-                <p className="text-xs text-muted-foreground mt-1">Select a preset or customize settings, then drop your file above</p>
-              </div>
-            )}
-
-            {/* Mobile Project List */}
-            <div className="md:hidden">
-              {projects && projects.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <h3 className="font-semibold text-sm">Your Projects</h3>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant={sidebarFilter === "all" ? "default" : "ghost"}
-                          size="sm"
-                          className="text-xs"
-                          onClick={() => setSidebarFilter("all")}
-                          data-testid="button-mobile-filter-all"
-                        >
-                          All
-                        </Button>
-                        <Button
-                          variant={sidebarFilter === "favorites" ? "default" : "ghost"}
-                          size="sm"
-                          className="text-xs gap-1"
-                          onClick={() => setSidebarFilter("favorites")}
-                          data-testid="button-mobile-filter-favorites"
-                        >
-                          <Star className="w-3 h-3" />
-                          Saved
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      {(sidebarFilter === "favorites" ? favorites : projects)?.map((project) => (
-                        <button
-                          key={project.id}
-                          onClick={() => setSelectedProjectId(project.id)}
-                          className={`w-full text-left p-2.5 rounded-md transition-colors ${
-                            selectedProjectId === project.id ? "bg-primary/10 border border-primary/30" : "hover-elevate border border-transparent"
-                          }`}
-                          data-testid={`project-mobile-${project.id}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {project.fileType === "video" ? (
-                              <FileVideo className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                            ) : (
-                              <FileAudio className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{project.name}</p>
-                              <div className="flex items-center gap-2">
-                                <StatusDot status={project.status} />
-                                <span className="text-[10px] text-muted-foreground capitalize">{project.status}</span>
-                              </div>
-                            </div>
-                            {project.isFavorite && <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
           </div>
-          </main>
-        </div>
-      </SidebarProvider>
 
-      {/* Pricing Modal */}
+          {!isPro && (
+            <Card className="border-primary/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
+              <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium">Free plan: 1 project, 100MB limit</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Upgrade for unlimited projects, batch upload, and more</p>
+                </div>
+                <Button size="sm" className="rounded-full gap-1 bg-gradient-to-r from-blue-500 to-purple-500 text-xs" onClick={handleUpgrade} data-testid="button-upgrade-bottom">
+                  <Crown className="w-3 h-3" />
+                  Upgrade to Pro
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </main>
+
       {showPricingModal && pricingData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-pricing">
           <Card className="w-full max-w-lg mx-4 relative">
@@ -1073,29 +883,243 @@ export default function Home() {
   );
 }
 
-function StatusDot({ status }: { status: string }) {
-  const color = status === "completed" ? "bg-green-400" : status === "processing" ? "bg-blue-400" : status === "failed" ? "bg-red-400" : "bg-yellow-400";
-  return <div className={`w-1.5 h-1.5 rounded-full ${color} ${status === "processing" ? "animate-pulse" : ""}`} />;
+function ProjectCard({
+  project,
+  isSelected,
+  isPro,
+  playingFileId,
+  onSelect,
+  onDelete,
+  onDeleteFile,
+  onDownload,
+  onPreview,
+  onFavorite,
+  onUpgrade,
+  initWaveform,
+  wavesurferInstances,
+}: {
+  project: ProjectResponse;
+  isSelected: boolean;
+  isPro: boolean;
+  playingFileId: number | null;
+  onSelect: () => void;
+  onDelete: () => void;
+  onDeleteFile: (id: number) => void;
+  onDownload: (id: number) => void;
+  onPreview: (id: number) => void;
+  onFavorite: (isFavorite: boolean) => void;
+  onUpgrade: () => void;
+  initWaveform: (fileId: number, el: HTMLDivElement | null) => void;
+  wavesurferInstances: React.MutableRefObject<Record<number, any>>;
+}) {
+  const files = project.files || [];
+  const completedCount = files.filter(f => f.status === "completed").length;
+  const processingCount = files.filter(f => f.status === "processing" || f.status === "pending").length;
+  const totalFiles = files.length;
+
+  return (
+    <Card className={isSelected ? "border-primary/40" : ""} data-testid={`card-project-${project.id}`}>
+      <CardContent className="p-0">
+        <button
+          className="w-full p-4 flex items-center justify-between gap-3 text-left"
+          onClick={onSelect}
+          data-testid={`button-select-project-${project.id}`}
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <FolderOpen className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate" data-testid={`text-project-name-${project.id}`}>{project.name}</p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className="text-[10px] text-muted-foreground">{totalFiles} file{totalFiles !== 1 ? "s" : ""}</span>
+                {completedCount > 0 && <span className="text-[10px] text-green-400">{completedCount} done</span>}
+                {processingCount > 0 && <span className="text-[10px] text-blue-400">{processingCount} processing</span>}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {project.isFavorite && <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />}
+            {isSelected ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </div>
+        </button>
+
+        {isSelected && (
+          <div className="border-t border-border/50 p-4 space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 text-xs"
+                onClick={(e) => { e.stopPropagation(); onFavorite(!project.isFavorite); }}
+                data-testid={`button-favorite-${project.id}`}
+              >
+                <Star className={`w-3 h-3 ${project.isFavorite ? "fill-yellow-400 text-yellow-400" : ""}`} />
+                {project.isFavorite ? "Saved" : "Save"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1 text-xs text-destructive"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                data-testid={`button-delete-project-${project.id}`}
+              >
+                <Trash2 className="w-3 h-3" />
+                Delete Project
+              </Button>
+            </div>
+
+            {files.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-2">No files in this project yet. Upload some files above.</p>
+            ) : (
+              <div className="space-y-2">
+                {files.map((file) => (
+                  <FileRow
+                    key={file.id}
+                    file={file}
+                    isPro={isPro}
+                    playingFileId={playingFileId}
+                    onDownload={onDownload}
+                    onPreview={onPreview}
+                    onDelete={onDeleteFile}
+                    onUpgrade={onUpgrade}
+                    initWaveform={initWaveform}
+                    wavesurferInstances={wavesurferInstances}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FileRow({
+  file,
+  isPro,
+  playingFileId,
+  onDownload,
+  onPreview,
+  onDelete,
+  onUpgrade,
+  initWaveform,
+  wavesurferInstances,
+}: {
+  file: ProjectFileResponse;
+  isPro: boolean;
+  playingFileId: number | null;
+  onDownload: (id: number) => void;
+  onPreview: (id: number) => void;
+  onDelete: (id: number) => void;
+  onUpgrade: () => void;
+  initWaveform: (fileId: number, el: HTMLDivElement | null) => void;
+  wavesurferInstances: React.MutableRefObject<Record<number, any>>;
+}) {
+  const isVideo = file.fileType === "video";
+
+  return (
+    <Card data-testid={`card-file-${file.id}`}>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          {isVideo ? (
+            <FileVideo className="w-4 h-4 text-purple-400 flex-shrink-0" />
+          ) : (
+            <FileAudio className="w-4 h-4 text-blue-400 flex-shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium truncate" data-testid={`text-file-name-${file.id}`}>{file.originalFileName}</p>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {file.fileSizeBytes && <span className="text-[10px] text-muted-foreground">{formatFileSize(file.fileSizeBytes)}</span>}
+              <span className="text-[10px] text-muted-foreground uppercase">{file.outputFormat || "mp3"}</span>
+              <span className="text-[10px] text-muted-foreground">{file.silenceThreshold}dB / {file.minSilenceDuration}ms</span>
+            </div>
+          </div>
+          <StatusBadge status={file.status} />
+        </div>
+
+        {(file.status === "processing" || file.status === "pending") && (
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-3 h-3 text-blue-400 animate-spin flex-shrink-0" />
+            <Progress className="h-1 flex-1" value={file.status === "processing" ? 65 : 15} />
+            <span className="text-[10px] text-muted-foreground">{file.status === "pending" ? "Queued" : "Processing"}</span>
+          </div>
+        )}
+
+        {file.status === "failed" && (
+          <p className="text-[10px] text-red-400">Processing failed. Try uploading again.</p>
+        )}
+
+        {file.status === "completed" && file.originalDurationSec != null && (
+          <div className="flex items-center gap-3 p-2 rounded-md bg-background/50 text-center">
+            <div className="flex-1">
+              <p className="text-sm font-bold" data-testid={`text-original-duration-${file.id}`}>{formatDuration(file.originalDurationSec)}</p>
+              <p className="text-[10px] text-muted-foreground">Before</p>
+            </div>
+            <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-green-400" data-testid={`text-processed-duration-${file.id}`}>{formatDuration(file.processedDurationSec)}</p>
+              <p className="text-[10px] text-muted-foreground">After</p>
+            </div>
+            {file.originalDurationSec > 0 && file.processedDurationSec != null && (
+              <div className="flex-1">
+                <p className="text-sm font-bold text-amber-400" data-testid={`text-removed-${file.id}`}>
+                  {Math.round(((file.originalDurationSec - file.processedDurationSec) / file.originalDurationSec) * 100)}%
+                </p>
+                <p className="text-[10px] text-muted-foreground">Removed</p>
+              </div>
+            )}
+            {file.processingTimeMs != null && (
+              <div className="flex items-center gap-1">
+                <Timer className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[10px] text-muted-foreground">{(file.processingTimeMs / 1000).toFixed(1)}s</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isPro && file.status === "completed" && (
+          <div
+            className="rounded-md overflow-hidden bg-background/50 p-1"
+            ref={(el) => {
+              if (el && !wavesurferInstances.current[file.id]) {
+                initWaveform(file.id, el);
+              }
+            }}
+            data-testid={`waveform-${file.id}`}
+          />
+        )}
+
+        {file.status === "completed" && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {isPro && (
+              <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => onPreview(file.id)} data-testid={`button-preview-${file.id}`}>
+                {playingFileId === file.id ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                {playingFileId === file.id ? "Pause" : "Preview"}
+              </Button>
+            )}
+            <Button size="sm" className="gap-1 text-xs" onClick={() => onDownload(file.id)} data-testid={`button-download-${file.id}`}>
+              <Download className="w-3 h-3" />
+              Download
+            </Button>
+            <Button variant="ghost" size="sm" className="gap-1 text-xs text-destructive" onClick={() => onDelete(file.id)} data-testid={`button-delete-file-${file.id}`}>
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case "completed":
-      return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Completed</Badge>;
+      return <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">Done</Badge>;
     case "processing":
-      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Processing</Badge>;
+      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px]">Processing</Badge>;
     case "failed":
-      return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Failed</Badge>;
+      return <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px]">Failed</Badge>;
     default:
-      return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Pending</Badge>;
+      return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[10px]">Queued</Badge>;
   }
-}
-
-function MetaItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="text-center p-2 rounded-md bg-background/50">
-      <p className="text-xs font-medium" data-testid={`text-meta-${label.toLowerCase().replace(" ", "-")}`}>{value}</p>
-      <p className="text-[10px] text-muted-foreground">{label}</p>
-    </div>
-  );
 }

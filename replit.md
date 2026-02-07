@@ -2,7 +2,7 @@
 
 ## Overview
 
-QuietCutter is a fully functional audio/video silence removal application with a dark navy UI. Users can sign in with Replit Auth (Google, GitHub, email), upload audio files (MP3, WAV, OGG, FLAC, M4A) or video files (MP4, MOV, AVI, MKV, WEBM), select quick presets or customize silence detection settings, and download processed files. The app includes project management with favorites, history tracking, contact form, blog pages, and Stripe Pro subscription.
+QuietCutter is a fully functional audio/video silence removal application with a dark navy UI. Users can sign in with Replit Auth (Google, GitHub, email), upload audio files (MP3, WAV, OGG, FLAC, M4A) or video files (MP4, MOV, AVI, MKV, WEBM), select quick presets or customize silence detection settings, and download processed files. The app includes multi-file project management with favorites, contact form, blog pages, and Stripe Pro subscription.
 
 ## User Preferences
 
@@ -19,7 +19,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 3. **Audio Processing**: FFmpeg silence removal with configurable threshold and duration
 4. **Video Processing**: FFmpeg extracts audio from video files, processes silence removal, outputs processed audio
 5. **Batch Upload**: Pro subscribers can upload up to 3 files simultaneously
-6. **Project Management**: History, favorites, download processed files
+6. **Multi-File Projects**: Projects are containers holding multiple files. Users can create named projects, add files to them, and manage files individually.
 7. **Stripe Integration**: Pro upgrade subscription checkout ($9.99/month or $79.99/year)
 8. **Contact Form**: Saves to database
 9. **Blog**: Individual blog post pages with full content
@@ -42,9 +42,9 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - Output format options: MP3 (320k), WAV, FLAC
 - Batch upload up to 3 files
 - Priority processing queue
-- Audio preview player for completed projects
+- Audio preview player for completed files
 - Waveform visualization (wavesurfer.js)
-- Bulk download all projects as ZIP
+- Bulk download all files as ZIP
 - Pro badge on profile
 
 ## System Architecture
@@ -58,6 +58,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - **Styling**: Tailwind CSS with dark navy theme
 - **Waveform**: wavesurfer.js for audio waveform visualization
 - **Path Aliases**: `@/` maps to `client/src/`, `@shared/` maps to `shared/`
+- **Layout**: Single-page layout with project dropdown selector, inline file list (no sidebar)
 
 ### Backend Architecture
 - **Framework**: Express 5 with TypeScript
@@ -74,20 +75,25 @@ QuietCutter is a fully functional audio/video silence removal application with a
 ### Database Schema
 - **users**: User accounts (from Replit Auth)
 - **sessions**: Auth session management
-- **projects**: Audio/video projects with userId, file paths, status, favorites, outputFormat
+- **projects**: Named containers with userId, name, isFavorite, createdAt
+- **project_files**: Individual files within projects with originalFileName, filePath, processedFilePath, status, settings, durations, fileType, fileSizeBytes
 - **custom_presets**: User-saved presets with threshold and duration settings (Pro only)
 - **contact_messages**: Contact form submissions
 - **stripe.*** : Stripe-managed schema for products, prices, customers, subscriptions
 
 ### API Endpoints
-- `GET /api/projects` - List user's projects
+- `GET /api/projects` - List user's projects (with nested files array)
+- `GET /api/projects/:id` - Get single project with files
+- `POST /api/projects` - Create empty project container
+- `PATCH /api/projects/:id` - Update project (name, favorite)
+- `DELETE /api/projects/:id` - Delete project and all its files
 - `GET /api/projects/favorites` - List user's favorite projects
-- `POST /api/upload` - Upload audio/video file(s) for processing (supports up to 3 files for Pro users)
-- `GET /api/projects/:id/download` - Download processed file
-- `GET /api/projects/:id/preview` - Stream processed audio for preview (Pro only)
-- `GET /api/projects/bulk-download` - Download all completed projects as ZIP (Pro only)
+- `POST /api/upload` - Upload file(s) to a project (creates project if no projectId given)
+- `GET /api/files/:id/download` - Download processed file
+- `GET /api/files/:id/preview` - Stream processed audio for preview (Pro only)
+- `DELETE /api/files/:id` - Delete individual file from project
+- `GET /api/projects/bulk-download` - Download all completed files as ZIP (Pro only)
 - `PATCH /api/projects/:id/favorite` - Toggle favorite status
-- `DELETE /api/projects/:id` - Delete project
 - `GET /api/subscription/status` - Check if user has active Pro subscription
 - `GET /api/presets` - List user's custom presets
 - `POST /api/presets` - Save a custom preset (Pro only)
@@ -99,17 +105,18 @@ QuietCutter is a fully functional audio/video silence removal application with a
 ### Audio/Video Processing Pipeline
 1. User uploads audio/video file(s) via `/api/upload`
 2. File size validated (100MB free / 500MB Pro)
-3. Free users: oldest project auto-deleted if at 1-project limit
-4. File(s) saved to `/uploads` directory with unique name
-5. Project(s) created in database with status "pending"
-6. Jobs added to priority queue (Pro jobs skip ahead of free)
-7. For video files: FFmpeg extracts audio to WAV first (`-vn -acodec pcm_s16le`)
-8. FFmpeg processes audio with silenceremove filter
-9. Output format determined by subscription (MP3 for free, user-selected for Pro)
-10. Pro MP3 exports at 320kbps, WAV/FLAC lossless
-11. Extracted audio temp file cleaned up (for video inputs)
-12. Project status updated to "completed"
-13. User can download or preview via API
+3. If projectId provided, files added to existing project; otherwise new project created
+4. Free users: oldest project auto-deleted if at 1-project limit
+5. File(s) saved to `/uploads` directory with unique name
+6. ProjectFile records created in database with status "pending"
+7. Jobs added to priority queue (Pro jobs skip ahead of free)
+8. For video files: FFmpeg extracts audio to WAV first (`-vn -acodec pcm_s16le`)
+9. FFmpeg processes audio with silenceremove filter
+10. Output format determined by subscription (MP3 for free, user-selected for Pro)
+11. Pro MP3 exports at 320kbps, WAV/FLAC lossless
+12. Extracted audio temp file cleaned up (for video inputs)
+13. ProjectFile status updated to "completed"
+14. User can download or preview via API
 
 ### Subscription Check
 - Pro status determined by querying `stripe.subscriptions` joined with `stripe.customers` via `metadata->>'userId'`
@@ -156,4 +163,5 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - `server/storage.ts` - Database operations
 - `server/stripeClient.ts` - Stripe client setup
 - `server/stripeService.ts` - Stripe service operations
-- `shared/schema.ts` - Database schema definitions
+- `shared/schema.ts` - Database schema definitions (projects + projectFiles tables)
+- `shared/routes.ts` - API route definitions and response types
