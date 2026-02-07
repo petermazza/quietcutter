@@ -9,6 +9,8 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - Preferred communication style: Simple, everyday language
 - Design: Dark-only theme with "Outfit" font for branding
 - Slogan: "— MAKE EVERY SECOND COUNT —" (no period)
+- "Checklist" always means a manual testing checklist for the user to test features themselves
+- Always verify information against the actual codebase before sending messages — don't assume features exist or list things that aren't in the app
 
 ## Key Features
 
