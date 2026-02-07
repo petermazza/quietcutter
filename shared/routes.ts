@@ -26,6 +26,11 @@ const projectResponseSchema = z.object({
   silenceThreshold: z.number(),
   minSilenceDuration: z.number(),
   outputFormat: z.string().optional(),
+  fileType: z.string().nullable().optional(),
+  fileSizeBytes: z.number().nullable().optional(),
+  originalDurationSec: z.number().nullable().optional(),
+  processedDurationSec: z.number().nullable().optional(),
+  processingTimeMs: z.number().nullable().optional(),
   createdAt: z.string().nullable(),
 });
 

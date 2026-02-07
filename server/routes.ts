@@ -275,6 +275,8 @@ export async function registerRoutes(
           silenceThreshold: parseInt(silenceThreshold) || -40,
           minSilenceDuration: parseInt(minSilenceDuration) || 500,
           outputFormat: resolvedFormat,
+          fileType: isVideo ? "video" : "audio",
+          fileSizeBytes: file.size,
         });
 
         enqueueProcessing({
@@ -718,10 +720,24 @@ export async function registerRoutes(
   return httpServer;
 }
 
+async function getAudioDuration(filePath: string): Promise<number | null> {
+  try {
+    const { exec } = await import("child_process");
+    const { promisify } = await import("util");
+    const execAsync = promisify(exec);
+    const { stdout } = await execAsync(`ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${filePath}"`, { timeout: 30000 });
+    const dur = parseFloat(stdout.trim());
+    return isNaN(dur) ? null : dur;
+  } catch {
+    return null;
+  }
+}
+
 async function processAudio(projectId: number, inputPath: string, threshold: number, minDuration: number, isVideo: boolean = false, outputFormat: string = "mp3") {
   const { exec } = await import("child_process");
   const { promisify } = await import("util");
   const execAsync = promisify(exec);
+  const startTime = Date.now();
   
   try {
     await storage.updateProject(projectId, { status: "processing" });
@@ -734,6 +750,8 @@ async function processAudio(projectId: number, inputPath: string, threshold: num
       await execAsync(extractCmd, { timeout: 600000 });
       audioInputPath = extractedAudioPath;
     }
+    
+    const originalDuration = await getAudioDuration(audioInputPath);
     
     const ext = outputFormat === "wav" ? "wav" : outputFormat === "flac" ? "flac" : "mp3";
     const outputPath = inputPath.replace(/\.[^/.]+$/, `_processed.${ext}`);
@@ -753,16 +771,23 @@ async function processAudio(projectId: number, inputPath: string, threshold: num
     
     await execAsync(command, { timeout: 600000 });
     
+    const processedDuration = await getAudioDuration(outputPath);
+    const processingTime = Date.now() - startTime;
+    
     if (isVideo && audioInputPath !== inputPath) {
       try { fs.unlinkSync(audioInputPath); } catch {}
     }
     
     await storage.updateProject(projectId, { 
       status: "completed",
-      processedFilePath: outputPath
+      processedFilePath: outputPath,
+      originalDurationSec: originalDuration,
+      processedDurationSec: processedDuration,
+      processingTimeMs: processingTime,
     });
   } catch (err) {
     console.error("Error processing audio:", err);
-    await storage.updateProject(projectId, { status: "failed" });
+    const processingTime = Date.now() - startTime;
+    await storage.updateProject(projectId, { status: "failed", processingTimeMs: processingTime });
   }
 }

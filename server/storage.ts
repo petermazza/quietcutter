@@ -25,6 +25,8 @@ export interface IStorage {
     silenceThreshold?: number;
     minSilenceDuration?: number;
     outputFormat?: string;
+    fileType?: string;
+    fileSizeBytes?: number;
   }): Promise<Project>;
   updateProject(id: number, updates: UpdateProjectRequest): Promise<Project | undefined>;
   deleteProject(id: number): Promise<boolean>;
@@ -72,6 +74,8 @@ export class DatabaseStorage implements IStorage {
     silenceThreshold?: number;
     minSilenceDuration?: number;
     outputFormat?: string;
+    fileType?: string;
+    fileSizeBytes?: number;
   }): Promise<Project> {
     const [created] = await db.insert(projects).values({
       name: project.name,
@@ -82,6 +86,8 @@ export class DatabaseStorage implements IStorage {
       silenceThreshold: project.silenceThreshold ?? -40,
       minSilenceDuration: project.minSilenceDuration ?? 500,
       outputFormat: project.outputFormat ?? "mp3",
+      fileType: project.fileType ?? "audio",
+      fileSizeBytes: project.fileSizeBytes ?? null,
     }).returning();
     return created;
   }

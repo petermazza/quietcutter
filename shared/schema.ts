@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, serial, integer, timestamp, varchar, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, varchar, boolean, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -17,6 +17,11 @@ export const projects = pgTable("projects", {
   minSilenceDuration: integer("min_silence_duration").notNull().default(500),
   isFavorite: boolean("is_favorite").notNull().default(false),
   outputFormat: text("output_format").notNull().default("mp3"),
+  fileType: text("file_type").default("audio"),
+  fileSizeBytes: integer("file_size_bytes"),
+  originalDurationSec: real("original_duration_sec"),
+  processedDurationSec: real("processed_duration_sec"),
+  processingTimeMs: integer("processing_time_ms"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
