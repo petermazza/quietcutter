@@ -421,13 +421,13 @@ export default function Home() {
             <span className="font-semibold text-foreground/80 text-sm" style={{ fontFamily: "'Outfit', sans-serif" }} data-testid="text-logo">QuietCutter</span>
             <span className="text-muted-foreground text-[10px] tracking-widest hidden sm:inline">— MAKE EVERY SECOND COUNT —</span>
           </div>
-          <nav className="hidden md:flex items-center gap-4">
-            <Link href="/" className="text-sm text-foreground font-medium" data-testid="link-home">Home</Link>
-            <Link href="/about" className="text-sm text-muted-foreground" data-testid="link-about">About</Link>
-            <Link href="/blog" className="text-sm text-muted-foreground" data-testid="link-blog">Blog</Link>
-            <Link href="/contact" className="text-sm text-muted-foreground" data-testid="link-contact">Contact</Link>
-          </nav>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-4 flex-wrap">
+            <nav className="hidden md:flex items-center gap-4">
+              <Link href="/" className="text-sm text-foreground font-medium" data-testid="link-home">Home</Link>
+              <Link href="/about" className="text-sm text-muted-foreground" data-testid="link-about">About</Link>
+              <Link href="/blog" className="text-sm text-muted-foreground" data-testid="link-blog">Blog</Link>
+              <Link href="/contact" className="text-sm text-muted-foreground" data-testid="link-contact">Contact</Link>
+            </nav>
             {authLoading ? null : isAuthenticated ? (
               <>
                 {user?.profileImageUrl && <img src={user.profileImageUrl} alt="" className="w-7 h-7 rounded-full" />}
