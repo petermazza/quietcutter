@@ -458,7 +458,7 @@ export default function Home() {
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
+        <div className="w-full max-w-3xl mx-auto p-4 md:p-6 space-y-4">
 
           {activeFiles.length > 0 && (
             <Card className="border-blue-500/30 bg-blue-500/5">
@@ -801,8 +801,8 @@ export default function Home() {
               </Card>
             ) : !isAuthenticated ? (
               <Card>
-                <CardContent className="p-8 text-center">
-                  <FolderOpen className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                <CardContent className="p-6 text-center">
+                  <FolderOpen className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">Sign in to see your projects</p>
                   <p className="text-xs text-muted-foreground mt-1">Your processed files will appear here after you sign in</p>
                 </CardContent>
