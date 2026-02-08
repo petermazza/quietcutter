@@ -73,19 +73,21 @@ export default function Home() {
     queryKey: ["/api/projects"],
   });
 
-  const { data: defaultProject } = useQuery<ProjectResponse>({
-    queryKey: ["/api/projects/default"],
-    enabled: isAuthenticated,
-  });
-
-  const defaultProjectId = defaultProject ? String(defaultProject.id) : null;
+  const defaultProjectCreated = useRef(false);
+  useEffect(() => {
+    if (isAuthenticated && !defaultProjectCreated.current) {
+      defaultProjectCreated.current = true;
+      fetch("/api/projects/default", { credentials: "include" })
+        .then(() => queryClient.invalidateQueries({ queryKey: ["/api/projects"] }))
+        .catch(() => {});
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!selectedProjectId && defaultProjectId) {
-      setSelectedProjectId(defaultProjectId);
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-    }
-  }, [defaultProjectId, selectedProjectId]);
+    if (selectedProjectId || !projects?.length) return;
+    const myUploads = projects.find(p => p.name === "My Uploads");
+    setSelectedProjectId(String(myUploads ? myUploads.id : projects[0].id));
+  }, [projects, selectedProjectId]);
 
   const { data: subscriptionData } = useQuery<{ isPro: boolean }>({
     queryKey: ["/api/subscription/status"],
@@ -260,7 +262,6 @@ export default function Home() {
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects/default"] });
 
       const pollInterval = setInterval(async () => {
         await refetchProjects();
@@ -406,16 +407,6 @@ export default function Home() {
   const activeFiles = projects?.flatMap(p => p.files || []).filter(f => f.status === "processing" || f.status === "pending") || [];
   const completedFileCount = projects?.flatMap(p => p.files || []).filter(f => f.status === "completed").length ?? 0;
 
-  useEffect(() => {
-    if (!selectedProjectId && projects && projects.length > 0) {
-      const withActiveFiles = projects.find(p => p.files?.some(f => f.status === "processing" || f.status === "pending"));
-      if (withActiveFiles) {
-        setSelectedProjectId(String(withActiveFiles.id));
-      } else {
-        setSelectedProjectId(String(projects[0].id));
-      }
-    }
-  }, [projects, selectedProjectId]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -507,7 +498,7 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-xs text-muted-foreground">Upload to:</span>
                 <Select
-                  value={selectedProjectId || defaultProjectId || ""}
+                  value={selectedProjectId || ""}
                   onValueChange={(val) => setSelectedProjectId(val)}
                 >
                   <SelectTrigger className="w-48" data-testid="select-upload-project">
