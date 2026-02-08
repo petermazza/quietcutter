@@ -73,6 +73,17 @@ export default function Home() {
     queryKey: ["/api/projects"],
   });
 
+  const { data: defaultProject } = useQuery<ProjectResponse>({
+    queryKey: ["/api/projects/default"],
+    enabled: isAuthenticated,
+  });
+
+  useEffect(() => {
+    if (defaultProject && !selectedProjectId) {
+      setSelectedProjectId(String(defaultProject.id));
+    }
+  }, [defaultProject]);
+
   const { data: subscriptionData } = useQuery<{ isPro: boolean }>({
     queryKey: ["/api/subscription/status"],
   });
@@ -246,6 +257,7 @@ export default function Home() {
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/default"] });
 
       const pollInterval = setInterval(async () => {
         await refetchProjects();

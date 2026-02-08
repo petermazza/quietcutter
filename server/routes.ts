@@ -141,6 +141,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/projects/default", async (req, res) => {
+    try {
+      const userId = (req as any).user?.claims?.sub || null;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const defaultProject = await storage.getDefaultProject(userId);
+      const files = await storage.getProjectFiles(defaultProject.id);
+      res.json({ ...defaultProject, files });
+    } catch (err) {
+      console.error("Error fetching default project:", err);
+      res.status(500).json({ message: "Failed to fetch default project" });
+    }
+  });
+
   app.get(api.projects.get.path, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
@@ -294,7 +307,7 @@ export async function registerRoutes(
           return res.status(403).json({ message: "Access denied" });
         }
         projectId = existingProject.id;
-      } else {
+      } else if (projectName) {
         if (!isPro && userId) {
           const projectCount = await storage.getProjectCount(userId);
           if (projectCount >= FREE_PROJECT_LIMIT) {
@@ -309,9 +322,17 @@ export async function registerRoutes(
             }
           }
         }
-        const name = projectName || files[0].originalname.replace(/\.[^/.]+$/, "");
-        const project = await storage.createProject({ name, userId });
+        const project = await storage.createProject({ name: projectName, userId });
         projectId = project.id;
+      } else {
+        if (userId) {
+          const defaultProject = await storage.getDefaultProject(userId);
+          projectId = defaultProject.id;
+        } else {
+          const name = files[0].originalname.replace(/\.[^/.]+$/, "");
+          const project = await storage.createProject({ name, userId });
+          projectId = project.id;
+        }
       }
 
       const createdFiles = [];

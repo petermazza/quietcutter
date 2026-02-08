@@ -19,6 +19,7 @@ export interface IStorage {
   getProject(id: number): Promise<Project | undefined>;
   getProjectCount(userId: string): Promise<number>;
   getOldestProject(userId: string): Promise<Project | undefined>;
+  getDefaultProject(userId: string): Promise<Project>;
   createProject(project: { name: string; userId?: string | null }): Promise<Project>;
   updateProject(id: number, updates: Partial<{ name: string; isFavorite: boolean }>): Promise<Project | undefined>;
   deleteProject(id: number): Promise<boolean>;
@@ -74,6 +75,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(projects.createdAt))
       .limit(1);
     return oldest;
+  }
+
+  async getDefaultProject(userId: string): Promise<Project> {
+    const DEFAULT_NAME = "My Uploads";
+    const [existing] = await db.select().from(projects)
+      .where(and(eq(projects.userId, userId), eq(projects.name, DEFAULT_NAME)))
+      .orderBy(asc(projects.createdAt))
+      .limit(1);
+    if (existing) return existing;
+    const [created] = await db.insert(projects).values({
+      name: DEFAULT_NAME,
+      userId,
+    }).returning();
+    return created;
   }
 
   async createProject(project: { name: string; userId?: string | null }): Promise<Project> {
