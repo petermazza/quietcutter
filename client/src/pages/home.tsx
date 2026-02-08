@@ -69,7 +69,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wavesurferInstances = useRef<Record<number, any>>({});
 
-  const { data: projects, refetch: refetchProjects } = useQuery<ProjectResponse[]>({
+  const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useQuery<ProjectResponse[]>({
     queryKey: ["/api/projects"],
   });
 
@@ -502,7 +502,7 @@ export default function Home() {
                   onValueChange={(val) => setSelectedProjectId(val)}
                 >
                   <SelectTrigger className="w-48" data-testid="select-upload-project">
-                    <SelectValue placeholder="Select project" />
+                    <SelectValue placeholder={isAuthenticated && (projectsLoading || !projects?.length) ? "Loading..." : "Select project"} />
                   </SelectTrigger>
                   <SelectContent>
                     {projects?.map((p) => (
@@ -792,6 +792,21 @@ export default function Home() {
                   />
                 ))}
               </div>
+            ) : isAuthenticated && projectsLoading ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Loader2 className="w-10 h-10 mx-auto mb-3 text-muted-foreground animate-spin" />
+                  <p className="text-sm text-muted-foreground">Loading your projects...</p>
+                </CardContent>
+              </Card>
+            ) : !isAuthenticated ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <FolderOpen className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Sign in to see your projects</p>
+                  <p className="text-xs text-muted-foreground mt-1">Your processed files will appear here after you sign in</p>
+                </CardContent>
+              </Card>
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
