@@ -415,7 +415,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border/50 sticky top-0 z-50 bg-background/95 backdrop-blur-sm">
-        <div className="px-4 py-3 flex items-center justify-between gap-4">
+        <div className="w-full max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <img src={logoImage} alt="QuietCutter" className="w-7 h-7 rounded-md" />
             <span className="font-semibold text-foreground/80 text-sm" style={{ fontFamily: "'Outfit', sans-serif" }} data-testid="text-logo">QuietCutter</span>
