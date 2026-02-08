@@ -7,9 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, Star, Download, Trash2, Loader2, LogOut, Video, Crown, Save, Play, Pause, Package, Lock, X, FileAudio, FileVideo, Timer, ArrowRight, ChevronDown, ChevronUp, Plus, FolderOpen } from "lucide-react";
+import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, Star, Download, Trash2, Loader2, LogOut, Video, Crown, Save, Play, Pause, Package, Lock, X, FileAudio, FileVideo, Timer, ArrowRight, ChevronDown, ChevronUp, Plus, FolderOpen, Menu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import type { ProjectResponse, ProjectFileResponse } from "@shared/routes";
@@ -65,6 +64,7 @@ export default function Home() {
   const [showPresetsSection, setShowPresetsSection] = useState(false);
   const [showNewProjectInput, setShowNewProjectInput] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wavesurferInstances = useRef<Record<number, any>>({});
@@ -193,6 +193,14 @@ export default function Home() {
   const handleFileUpload = async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
+
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to upload and process files.",
+      });
+      return;
+    }
 
     if (fileArray.length > 1 && !isPro) {
       toast({
@@ -415,50 +423,82 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border/50 sticky top-0 z-50 bg-background/95 backdrop-blur-sm">
-        <div className="w-full max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img src={logoImage} alt="QuietCutter" className="w-7 h-7 rounded-md" />
-            <span className="font-semibold text-foreground/80 text-sm" style={{ fontFamily: "'Outfit', sans-serif" }} data-testid="text-logo">QuietCutter</span>
-            <span className="text-muted-foreground text-[10px] tracking-widest hidden sm:inline">— MAKE EVERY SECOND COUNT —</span>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap">
-            <nav className="hidden md:flex items-center gap-4">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <Link href="/">
+            <div className="flex items-center gap-2 cursor-pointer">
+              <img src={logoImage} alt="QuietCutter" className="w-8 h-8 rounded-lg" />
+              <span className="font-semibold text-foreground/80" style={{ fontFamily: "'Outfit', sans-serif" }} data-testid="text-logo">QuietCutter</span>
+            </div>
+          </Link>
+          <div className="flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-6">
               <Link href="/" className="text-sm text-foreground font-medium" data-testid="link-home">Home</Link>
               <Link href="/about" className="text-sm text-muted-foreground" data-testid="link-about">About</Link>
               <Link href="/blog" className="text-sm text-muted-foreground" data-testid="link-blog">Blog</Link>
               <Link href="/contact" className="text-sm text-muted-foreground" data-testid="link-contact">Contact</Link>
             </nav>
-            {authLoading ? null : isAuthenticated ? (
-              <>
-                {user?.profileImageUrl && <img src={user.profileImageUrl} alt="" className="w-7 h-7 rounded-full" />}
-                <span className="text-xs text-muted-foreground hidden sm:inline">{user?.firstName || user?.email}</span>
-                {isPro && (
-                  <Badge className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/30 gap-1" data-testid="badge-pro">
-                    <Crown className="w-3 h-3" />
-                    Pro
-                  </Badge>
-                )}
-                {!isPro && (
-                  <Button size="sm" className="rounded-full gap-1 bg-gradient-to-r from-blue-500 to-purple-500 text-xs" onClick={handleUpgrade} data-testid="button-upgrade">
-                    <Crown className="w-3 h-3" />
-                    Pro
-                  </Button>
-                )}
-                <a href="/api/logout">
-                  <Button variant="ghost" size="icon" data-testid="button-logout">
-                    <LogOut className="w-4 h-4" />
+            <div className="hidden md:flex items-center gap-2">
+              {authLoading ? null : isAuthenticated ? (
+                <>
+                  {user?.profileImageUrl && <img src={user.profileImageUrl} alt="" className="w-7 h-7 rounded-full" />}
+                  <span className="text-xs text-muted-foreground hidden sm:inline">{user?.firstName || user?.email}</span>
+                  {isPro && (
+                    <Badge className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/30 gap-1" data-testid="badge-pro">
+                      <Crown className="w-3 h-3" />
+                      Pro
+                    </Badge>
+                  )}
+                  {!isPro && (
+                    <Button size="sm" className="rounded-full gap-1 bg-gradient-to-r from-blue-500 to-purple-500 text-xs" onClick={handleUpgrade} data-testid="button-upgrade">
+                      <Crown className="w-3 h-3" />
+                      Pro
+                    </Button>
+                  )}
+                  <a href="/api/logout">
+                    <Button variant="ghost" size="icon" data-testid="button-logout">
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </a>
+                </>
+              ) : (
+                <a href="/api/login">
+                  <Button variant="outline" size="sm" className="rounded-full gap-2" data-testid="button-sign-in">
+                    Sign in
                   </Button>
                 </a>
-              </>
+              )}
+            </div>
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} data-testid="button-mobile-menu">
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
+          </div>
+        </div>
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border/50 px-4 py-3 space-y-2">
+            <Link href="/" className="block text-sm text-foreground font-medium py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-home-mobile">Home</Link>
+            <Link href="/about" className="block text-sm text-muted-foreground py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-about-mobile">About</Link>
+            <Link href="/blog" className="block text-sm text-muted-foreground py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-blog-mobile">Blog</Link>
+            <Link href="/contact" className="block text-sm text-muted-foreground py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-contact-mobile">Contact</Link>
+            {authLoading ? null : isAuthenticated ? (
+              <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                {user?.profileImageUrl && <img src={user.profileImageUrl} alt="" className="w-7 h-7 rounded-full" />}
+                <span className="text-xs text-muted-foreground">{user?.firstName || user?.email}</span>
+                <a href="/api/logout" className="ml-auto">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs" data-testid="button-logout-mobile">
+                    <LogOut className="w-3 h-3" />
+                    Sign out
+                  </Button>
+                </a>
+              </div>
             ) : (
               <a href="/api/login">
-                <Button variant="outline" size="sm" className="rounded-full gap-2" data-testid="button-sign-in">
+                <Button variant="outline" size="sm" className="rounded-full gap-2 w-full mt-2" data-testid="button-sign-in-mobile">
                   Sign in
                 </Button>
               </a>
             )}
           </div>
-        </div>
+        )}
       </header>
 
       <main className="flex-1 overflow-y-auto">
@@ -477,7 +517,9 @@ export default function Home() {
                     {activeFiles.some(f => f.status === "processing") ? "Processing" : "In Queue"}
                   </Badge>
                 </div>
-                <Progress className="mt-3 h-1.5" value={activeFiles.some(f => f.status === "processing") ? 65 : 15} />
+                <div className="mt-3 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: "100%" }} />
+                </div>
               </CardContent>
             </Card>
           )}
@@ -743,7 +785,7 @@ export default function Home() {
                     Download All
                   </Button>
                 )}
-                {showNewProjectInput ? (
+                {isAuthenticated && (showNewProjectInput ? (
                   <div className="flex items-center gap-1">
                     <Input
                       placeholder="Project name..."
@@ -774,7 +816,7 @@ export default function Home() {
                     <Plus className="w-3 h-3" />
                     New Project
                   </Button>
-                )}
+                ))}
               </div>
             </div>
 
@@ -788,8 +830,16 @@ export default function Home() {
                     isPro={isPro}
                     playingFileId={playingFileId}
                     onSelect={() => setSelectedProjectId(selectedProjectId === String(project.id) ? null : String(project.id))}
-                    onDelete={() => deleteProjectMutation.mutate(project.id)}
-                    onDeleteFile={(fileId) => deleteFileMutation.mutate(fileId)}
+                    onDelete={() => {
+                      if (window.confirm("Are you sure you want to delete this project and all its files?")) {
+                        deleteProjectMutation.mutate(project.id);
+                      }
+                    }}
+                    onDeleteFile={(fileId) => {
+                      if (window.confirm("Are you sure you want to delete this file?")) {
+                        deleteFileMutation.mutate(fileId);
+                      }
+                    }}
                     onDownload={handleDownload}
                     onPreview={handlePreview}
                     onFavorite={(isFavorite) => favoriteMutation.mutate({ id: project.id, isFavorite })}
@@ -849,9 +899,20 @@ export default function Home() {
         </div>
       </main>
 
+      <footer className="border-t border-border/50 py-6">
+        <div className="container mx-auto px-4 max-w-3xl flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} QuietCutter. All rights reserved.</p>
+          <nav className="flex items-center gap-4">
+            <Link href="/about" className="text-xs text-muted-foreground" data-testid="link-about-footer">About</Link>
+            <Link href="/blog" className="text-xs text-muted-foreground" data-testid="link-blog-footer">Blog</Link>
+            <Link href="/contact" className="text-xs text-muted-foreground" data-testid="link-contact-footer">Contact</Link>
+          </nav>
+        </div>
+      </footer>
+
       {showPricingModal && pricingData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-pricing">
-          <Card className="w-full max-w-lg mx-4 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-pricing" onClick={() => setShowPricingModal(false)}>
+          <Card className="w-full max-w-lg mx-4 relative" onClick={(e) => e.stopPropagation()}>
             <Button size="icon" variant="ghost" className="absolute top-3 right-3" onClick={() => setShowPricingModal(false)} data-testid="button-close-pricing">
               <X className="h-4 w-4" />
             </Button>
@@ -1046,8 +1107,7 @@ function FileRow({
   const isVideo = file.fileType === "video";
 
   return (
-    <Card data-testid={`card-file-${file.id}`}>
-      <CardContent className="p-3 space-y-2">
+    <div className="rounded-md border border-border/50 bg-background/50 p-3 space-y-2" data-testid={`card-file-${file.id}`}>
         <div className="flex items-center gap-2">
           {isVideo ? (
             <FileVideo className="w-4 h-4 text-purple-400 flex-shrink-0" />
@@ -1068,7 +1128,9 @@ function FileRow({
         {(file.status === "processing" || file.status === "pending") && (
           <div className="flex items-center gap-2">
             <Loader2 className="w-3 h-3 text-blue-400 animate-spin flex-shrink-0" />
-            <Progress className="h-1 flex-1" value={file.status === "processing" ? 65 : 15} />
+            <div className="h-1 flex-1 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: "100%" }} />
+            </div>
             <span className="text-[10px] text-muted-foreground">{file.status === "pending" ? "Queued" : "Processing"}</span>
           </div>
         )}
@@ -1134,8 +1196,7 @@ function FileRow({
             </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 

@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar } from "lucide-react";
+import { Calendar, Menu, X } from "lucide-react";
 import logoImage from "@assets/transparent_output_1770321954939.png";
 
 const blogPosts = [
@@ -44,37 +45,51 @@ const blogPosts = [
 ];
 
 export default function Blog() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border/50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer">
-              <img 
-                src={logoImage} 
-                alt="QuietCutter" 
-                className="w-8 h-8 rounded-lg"
-              />
+              <img src={logoImage} alt="QuietCutter" className="w-8 h-8 rounded-lg" />
               <span className="font-semibold text-foreground/80" style={{ fontFamily: "'Outfit', sans-serif" }}>QuietCutter</span>
             </div>
           </Link>
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="/" className="text-sm text-muted-foreground" data-testid="link-home">Home</Link>
-            <Link href="/about" className="text-sm text-muted-foreground" data-testid="link-about">About</Link>
-            <Link href="/blog" className="text-sm text-foreground font-medium" data-testid="link-blog">Blog</Link>
-            <Link href="/contact" className="text-sm text-muted-foreground" data-testid="link-contact">Contact</Link>
-          </nav>
+          <div className="flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-6">
+              <Link href="/" className="text-sm text-muted-foreground" data-testid="link-home">Home</Link>
+              <Link href="/about" className="text-sm text-muted-foreground" data-testid="link-about">About</Link>
+              <Link href="/blog" className="text-sm text-foreground font-medium" data-testid="link-blog">Blog</Link>
+              <Link href="/contact" className="text-sm text-muted-foreground" data-testid="link-contact">Contact</Link>
+            </nav>
+            <a href="/api/login">
+              <Button variant="outline" size="sm" className="rounded-full gap-2 hidden md:inline-flex" data-testid="button-sign-in">
+                Sign in
+              </Button>
+            </a>
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} data-testid="button-mobile-menu">
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
+          </div>
         </div>
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border/50 px-4 py-3 space-y-2">
+            <Link href="/" className="block text-sm text-muted-foreground py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-home-mobile">Home</Link>
+            <Link href="/about" className="block text-sm text-muted-foreground py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-about-mobile">About</Link>
+            <Link href="/blog" className="block text-sm text-foreground font-medium py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-blog-mobile">Blog</Link>
+            <Link href="/contact" className="block text-sm text-muted-foreground py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-contact-mobile">Contact</Link>
+            <a href="/api/login">
+              <Button variant="outline" size="sm" className="rounded-full gap-2 w-full mt-2" data-testid="button-sign-in-mobile">
+                Sign in
+              </Button>
+            </a>
+          </div>
+        )}
       </header>
 
-      <main className="container mx-auto px-4 py-12 max-w-4xl">
-        <Link href="/">
-          <Button variant="ghost" size="sm" className="mb-6 gap-2" data-testid="button-back">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Home
-          </Button>
-        </Link>
-
+      <main className="flex-1 container mx-auto px-4 py-12 max-w-3xl">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-400 via-blue-400 to-purple-400 bg-clip-text text-transparent mb-4" style={{ fontFamily: "'Outfit', sans-serif" }}>
             Blog
@@ -106,6 +121,17 @@ export default function Blog() {
           ))}
         </div>
       </main>
+
+      <footer className="border-t border-border/50 py-6">
+        <div className="container mx-auto px-4 max-w-3xl flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} QuietCutter. All rights reserved.</p>
+          <nav className="flex items-center gap-4">
+            <Link href="/about" className="text-xs text-muted-foreground" data-testid="link-about-footer">About</Link>
+            <Link href="/blog" className="text-xs text-muted-foreground" data-testid="link-blog-footer">Blog</Link>
+            <Link href="/contact" className="text-xs text-muted-foreground" data-testid="link-contact-footer">Contact</Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }
