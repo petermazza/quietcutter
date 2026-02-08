@@ -62,7 +62,7 @@ export default function Home() {
   const [pricingData, setPricingData] = useState<any>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [showPresetsSection, setShowPresetsSection] = useState(true);
+  const [showPresetsSection, setShowPresetsSection] = useState(false);
   const [showNewProjectInput, setShowNewProjectInput] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
