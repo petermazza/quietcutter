@@ -458,7 +458,7 @@ export default function Home() {
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="w-full max-w-3xl mx-auto p-4 md:p-6 space-y-4">
+        <div className="w-full max-w-3xl mx-auto p-4 md:p-5 space-y-3">
 
           {activeFiles.length > 0 && (
             <Card className="border-blue-500/30 bg-blue-500/5">
@@ -515,7 +515,7 @@ export default function Home() {
               </div>
 
               <div
-                className={`border-2 border-dashed rounded-md p-8 text-center transition-colors cursor-pointer ${
+                className={`border-2 border-dashed rounded-md p-5 text-center transition-colors cursor-pointer ${
                   isDragging ? "border-primary bg-primary/5" : "border-border"
                 } ${isUploading ? "pointer-events-none opacity-50" : ""}`}
                 onDrop={handleDrop}
@@ -540,9 +540,9 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <div className="flex justify-center gap-2 mb-3">
-                      <Upload className="w-7 h-7 text-muted-foreground" />
-                      <Video className="w-7 h-7 text-muted-foreground" />
+                    <div className="flex justify-center gap-2 mb-2">
+                      <Upload className="w-6 h-6 text-muted-foreground" />
+                      <Video className="w-6 h-6 text-muted-foreground" />
                     </div>
                     <p className="text-sm">
                       <span className="text-primary cursor-pointer">Click to upload</span>
