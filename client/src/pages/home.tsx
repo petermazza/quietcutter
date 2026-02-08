@@ -78,15 +78,14 @@ export default function Home() {
     enabled: isAuthenticated,
   });
 
+  const defaultProjectId = defaultProject ? String(defaultProject.id) : null;
+
   useEffect(() => {
-    if (selectedProjectId) return;
-    if (defaultProject) {
-      setSelectedProjectId(String(defaultProject.id));
-    } else if (projects?.length) {
-      const myUploads = projects.find(p => p.name === "My Uploads");
-      if (myUploads) setSelectedProjectId(String(myUploads.id));
+    if (!selectedProjectId && defaultProjectId) {
+      setSelectedProjectId(defaultProjectId);
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
     }
-  }, [defaultProject, projects, selectedProjectId]);
+  }, [defaultProjectId, selectedProjectId]);
 
   const { data: subscriptionData } = useQuery<{ isPro: boolean }>({
     queryKey: ["/api/subscription/status"],
@@ -508,11 +507,11 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-xs text-muted-foreground">Upload to:</span>
                 <Select
-                  value={selectedProjectId || ""}
+                  value={selectedProjectId || defaultProjectId || ""}
                   onValueChange={(val) => setSelectedProjectId(val)}
                 >
                   <SelectTrigger className="w-48" data-testid="select-upload-project">
-                    <SelectValue placeholder="Loading..." />
+                    <SelectValue placeholder="Select project" />
                   </SelectTrigger>
                   <SelectContent>
                     {projects?.map((p) => (
