@@ -597,7 +597,16 @@ export default function Home() {
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    toast({
+                      title: "Sign in required",
+                      description: "Please sign in to upload and process files.",
+                    });
+                    return;
+                  }
+                  fileInputRef.current?.click();
+                }}
                 data-testid="dropzone-upload"
               >
                 <input
