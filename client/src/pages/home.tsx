@@ -84,10 +84,14 @@ export default function Home() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (selectedProjectId || !projects?.length) return;
-    const myUploads = projects.find(p => p.name === "My Uploads");
-    setSelectedProjectId(String(myUploads ? myUploads.id : projects[0].id));
-  }, [projects, selectedProjectId]);
+    if (selectedProjectId) return;
+    if (projects?.length) {
+      const myUploads = projects.find(p => p.name === "My Uploads");
+      setSelectedProjectId(String(myUploads ? myUploads.id : projects[0].id));
+    } else if (!isAuthenticated) {
+      setSelectedProjectId("default");
+    }
+  }, [projects, selectedProjectId, isAuthenticated]);
 
   const { data: subscriptionData } = useQuery<{ isPro: boolean }>({
     queryKey: ["/api/subscription/status"],
@@ -502,9 +506,12 @@ export default function Home() {
                   onValueChange={(val) => setSelectedProjectId(val)}
                 >
                   <SelectTrigger className="w-48" data-testid="select-upload-project">
-                    <SelectValue placeholder={isAuthenticated && (projectsLoading || !projects?.length) ? "Loading..." : "Select project"} />
+                    <SelectValue placeholder={isAuthenticated && (projectsLoading || !projects?.length) ? "Loading..." : "My Uploads"} />
                   </SelectTrigger>
                   <SelectContent>
+                    {!isAuthenticated && !projects?.length && (
+                      <SelectItem value="default">My Uploads</SelectItem>
+                    )}
                     {projects?.map((p) => (
                       <SelectItem key={p.id} value={String(p.id)}>
                         {p.name}
@@ -800,11 +807,18 @@ export default function Home() {
                 </CardContent>
               </Card>
             ) : !isAuthenticated ? (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <FolderOpen className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Sign in to see your projects</p>
-                  <p className="text-xs text-muted-foreground mt-1">Your processed files will appear here after you sign in</p>
+              <Card data-testid="card-project-default">
+                <CardContent className="p-0">
+                  <div className="w-full p-4 flex items-center justify-between gap-3 text-left">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FolderOpen className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">My Uploads</p>
+                        <p className="text-xs text-muted-foreground">0 files</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Sign in to upload files</p>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
