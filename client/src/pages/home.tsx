@@ -505,7 +505,7 @@ export default function Home() {
                   value={selectedProjectId || ""}
                   onValueChange={(val) => setSelectedProjectId(val)}
                 >
-                  <SelectTrigger className="w-48" data-testid="select-upload-project">
+                  <SelectTrigger className="w-48" data-testid="select-upload-project" disabled={!isAuthenticated}>
                     <SelectValue placeholder={isAuthenticated && (projectsLoading || !projects?.length) ? "Loading..." : "My Uploads"} />
                   </SelectTrigger>
                   <SelectContent>
