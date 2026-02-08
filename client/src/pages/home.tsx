@@ -1026,40 +1026,41 @@ function ProjectCard({
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {project.isFavorite && <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />}
+            {totalFiles > 0 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => { e.stopPropagation(); onFavorite(!project.isFavorite); }}
+                  data-testid={`button-favorite-${project.id}`}
+                >
+                  <Star className={`w-4 h-4 ${project.isFavorite ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive"
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  data-testid={`button-delete-project-${project.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </>
+            )}
+            {project.isFavorite && totalFiles === 0 && <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />}
             {isSelected ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </div>
         </button>
 
         {isSelected && (
-          <div className="border-t border-border/50 p-4 space-y-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1 text-xs"
-                onClick={(e) => { e.stopPropagation(); onFavorite(!project.isFavorite); }}
-                data-testid={`button-favorite-${project.id}`}
-              >
-                <Star className={`w-3 h-3 ${project.isFavorite ? "fill-yellow-400 text-yellow-400" : ""}`} />
-                {project.isFavorite ? "Saved" : "Save"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1 text-xs text-destructive"
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                data-testid={`button-delete-project-${project.id}`}
-              >
-                <Trash2 className="w-3 h-3" />
-                Delete Project
-              </Button>
-            </div>
-
+          <div className="border-t border-border/50">
             {files.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-2">No files in this project yet. Upload some files above.</p>
+              <div className="flex flex-col items-center gap-1.5 py-5 px-4" data-testid={`empty-state-project-${project.id}`}>
+                <Upload className="w-5 h-5 text-muted-foreground/50" />
+                <p className="text-xs text-muted-foreground">No files yet. Upload some files above.</p>
+              </div>
             ) : (
-              <div className="space-y-2">
+              <div className="p-3 space-y-2">
                 {files.map((file) => (
                   <FileRow
                     key={file.id}
