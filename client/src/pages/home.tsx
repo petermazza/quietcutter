@@ -79,10 +79,14 @@ export default function Home() {
   });
 
   useEffect(() => {
-    if (defaultProject && !selectedProjectId) {
+    if (selectedProjectId) return;
+    if (defaultProject) {
       setSelectedProjectId(String(defaultProject.id));
+    } else if (projects?.length) {
+      const myUploads = projects.find(p => p.name === "My Uploads");
+      if (myUploads) setSelectedProjectId(String(myUploads.id));
     }
-  }, [defaultProject]);
+  }, [defaultProject, projects, selectedProjectId]);
 
   const { data: subscriptionData } = useQuery<{ isPro: boolean }>({
     queryKey: ["/api/subscription/status"],
@@ -504,20 +508,13 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-xs text-muted-foreground">Upload to:</span>
                 <Select
-                  value={selectedProjectId || "__new__"}
-                  onValueChange={(val) => {
-                    if (val === "__new__") {
-                      setSelectedProjectId(null);
-                    } else {
-                      setSelectedProjectId(val);
-                    }
-                  }}
+                  value={selectedProjectId || ""}
+                  onValueChange={(val) => setSelectedProjectId(val)}
                 >
                   <SelectTrigger className="w-48" data-testid="select-upload-project">
-                    <SelectValue placeholder="New Project" />
+                    <SelectValue placeholder="Loading..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__new__">New Project</SelectItem>
                     {projects?.map((p) => (
                       <SelectItem key={p.id} value={String(p.id)}>
                         {p.name}
