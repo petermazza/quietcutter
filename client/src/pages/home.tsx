@@ -8,6 +8,8 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, Star, Download, Trash2, Loader2, LogOut, Video, Crown, Save, Play, Pause, Package, Lock, X, FileAudio, FileVideo, Timer, ArrowRight, ChevronDown, ChevronUp, Plus, FolderOpen, Menu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -440,25 +442,45 @@ export default function Home() {
             <div className="hidden md:flex items-center gap-2">
               {authLoading ? null : isAuthenticated ? (
                 <>
-                  {user?.profileImageUrl && <img src={user.profileImageUrl} alt="" className="w-7 h-7 rounded-full" />}
-                  <span className="text-xs text-muted-foreground hidden sm:inline">{user?.firstName || user?.email}</span>
-                  {isPro && (
-                    <Badge className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/30 gap-1" data-testid="badge-pro">
-                      <Crown className="w-3 h-3" />
-                      Pro
-                    </Badge>
-                  )}
                   {!isPro && (
                     <Button size="sm" className="rounded-full gap-1 bg-gradient-to-r from-blue-500 to-purple-500 text-xs" onClick={handleUpgrade} data-testid="button-upgrade">
                       <Crown className="w-3 h-3" />
                       Pro
                     </Button>
                   )}
-                  <a href="/api/logout">
-                    <Button variant="ghost" size="icon" data-testid="button-logout">
-                      <LogOut className="w-4 h-4" />
-                    </Button>
-                  </a>
+                  {isPro && (
+                    <Badge className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/30 gap-1" data-testid="badge-pro">
+                      <Crown className="w-3 h-3" />
+                      Pro
+                    </Badge>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || "User"} />
+                          <AvatarFallback className="text-xs bg-muted">
+                            {(user?.firstName?.[0] || user?.email?.[0] || "U").toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuLabel>
+                        <span className="truncate text-sm" data-testid="text-user-name">{user?.firstName || user?.email}</span>
+                      </DropdownMenuLabel>
+                      {user?.email && user?.firstName && (
+                        <p className="px-2 pb-1 text-[11px] text-muted-foreground truncate" data-testid="text-user-email">{user.email}</p>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <a href="/api/logout" className="cursor-pointer gap-2" data-testid="button-logout">
+                          <LogOut className="w-4 h-4" />
+                          Sign out
+                        </a>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </>
               ) : (
                 <a href="/api/login">
@@ -481,7 +503,12 @@ export default function Home() {
             <Link href="/contact" className="block text-sm text-muted-foreground py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-contact-mobile">Contact</Link>
             {authLoading ? null : isAuthenticated ? (
               <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                {user?.profileImageUrl && <img src={user.profileImageUrl} alt="" className="w-7 h-7 rounded-full" />}
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || "User"} />
+                  <AvatarFallback className="text-[10px] bg-muted">
+                    {(user?.firstName?.[0] || user?.email?.[0] || "U").toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="text-xs text-muted-foreground">{user?.firstName || user?.email}</span>
                 <a href="/api/logout" className="ml-auto">
                   <Button variant="ghost" size="sm" className="gap-1 text-xs" data-testid="button-logout-mobile">

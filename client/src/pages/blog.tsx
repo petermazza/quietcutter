@@ -3,7 +3,10 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Menu, X } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Calendar, Menu, X, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/transparent_output_1770321954939.png";
 
 const blogPosts = [
@@ -46,6 +49,7 @@ const blogPosts = [
 
 export default function Blog() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -64,11 +68,41 @@ export default function Blog() {
               <Link href="/blog" className="text-sm text-foreground font-medium" data-testid="link-blog">Blog</Link>
               <Link href="/contact" className="text-sm text-muted-foreground" data-testid="link-contact">Contact</Link>
             </nav>
-            <a href="/api/login">
-              <Button variant="outline" size="sm" className="rounded-full gap-2 hidden md:inline-flex" data-testid="button-sign-in">
-                Sign in
-              </Button>
-            </a>
+            {authLoading ? null : isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
+                    <Avatar className="h-8 w-8 cursor-pointer">
+                      <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || "User"} />
+                      <AvatarFallback className="text-xs bg-muted">
+                        {(user?.firstName?.[0] || user?.email?.[0] || "U").toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>
+                    <span className="truncate text-sm" data-testid="text-user-name">{user?.firstName || user?.email}</span>
+                  </DropdownMenuLabel>
+                  {user?.email && user?.firstName && (
+                    <p className="px-2 pb-1 text-[11px] text-muted-foreground truncate" data-testid="text-user-email">{user.email}</p>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <a href="/api/logout" className="cursor-pointer gap-2" data-testid="button-logout">
+                      <LogOut className="w-4 h-4" />
+                      Sign out
+                    </a>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <a href="/api/login">
+                <Button variant="outline" size="sm" className="rounded-full gap-2 hidden md:inline-flex" data-testid="button-sign-in">
+                  Sign in
+                </Button>
+              </a>
+            )}
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} data-testid="button-mobile-menu">
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
@@ -80,11 +114,29 @@ export default function Blog() {
             <Link href="/about" className="block text-sm text-muted-foreground py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-about-mobile">About</Link>
             <Link href="/blog" className="block text-sm text-foreground font-medium py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-blog-mobile">Blog</Link>
             <Link href="/contact" className="block text-sm text-muted-foreground py-1" onClick={() => setMobileMenuOpen(false)} data-testid="link-contact-mobile">Contact</Link>
-            <a href="/api/login">
-              <Button variant="outline" size="sm" className="rounded-full gap-2 w-full mt-2" data-testid="button-sign-in-mobile">
-                Sign in
-              </Button>
-            </a>
+            {authLoading ? null : isAuthenticated ? (
+              <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || "User"} />
+                  <AvatarFallback className="text-[10px] bg-muted">
+                    {(user?.firstName?.[0] || user?.email?.[0] || "U").toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs text-muted-foreground" data-testid="text-user-name-mobile">{user?.firstName || user?.email}</span>
+                <a href="/api/logout" className="ml-auto">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs" data-testid="button-logout-mobile">
+                    <LogOut className="w-3 h-3" />
+                    Sign out
+                  </Button>
+                </a>
+              </div>
+            ) : (
+              <a href="/api/login">
+                <Button variant="outline" size="sm" className="rounded-full gap-2 w-full mt-2" data-testid="button-sign-in-mobile">
+                  Sign in
+                </Button>
+              </a>
+            )}
           </div>
         )}
       </header>
