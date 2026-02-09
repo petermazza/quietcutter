@@ -67,6 +67,7 @@ export default function Home() {
   const [showNewProjectInput, setShowNewProjectInput] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wavesurferInstances = useRef<Record<number, any>>({});
@@ -197,10 +198,7 @@ export default function Home() {
     if (fileArray.length === 0) return;
 
     if (!isAuthenticated) {
-      toast({
-        title: "Sign in required",
-        description: "Please sign in to upload and process files.",
-      });
+      setShowSignInModal(true);
       return;
     }
 
@@ -599,10 +597,7 @@ export default function Home() {
                 onDragLeave={handleDragLeave}
                 onClick={() => {
                   if (!isAuthenticated) {
-                    toast({
-                      title: "Sign in required",
-                      description: "Please sign in to upload and process files.",
-                    });
+                    setShowSignInModal(true);
                     return;
                   }
                   fileInputRef.current?.click();
@@ -1000,6 +995,31 @@ export default function Home() {
                   <span>Bulk download as ZIP</span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {showSignInModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-sign-in" onClick={() => setShowSignInModal(false)} onKeyDown={(e) => { if (e.key === "Escape") setShowSignInModal(false); }}>
+          <Card className="w-full max-w-sm mx-4 relative" onClick={(e) => e.stopPropagation()}>
+            <Button size="icon" variant="ghost" className="absolute top-3 right-3" onClick={() => setShowSignInModal(false)} data-testid="button-close-sign-in-modal">
+              <X className="h-4 w-4" />
+            </Button>
+            <CardContent className="p-6 pt-8 text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                <Upload className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-base">Sign in required</h3>
+                <p className="text-sm text-muted-foreground mt-1">Sign in to upload and process your audio and video files.</p>
+              </div>
+              <a href="/api/login" className="block">
+                <Button className="w-full gap-2" data-testid="button-sign-in-modal">
+                  Sign in to get started
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </a>
             </CardContent>
           </Card>
         </div>
