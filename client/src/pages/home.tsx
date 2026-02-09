@@ -570,6 +570,12 @@ export default function Home() {
       <main className="flex-1 overflow-y-auto">
         <div className="w-full max-w-3xl mx-auto p-4 md:p-5 space-y-3">
 
+          <div className="flex flex-col items-center gap-2 py-4">
+            <img src={logoImage} alt="QuietCutter" className="w-16 h-16 rounded-xl" />
+            <span className="font-semibold text-2xl" style={{ fontFamily: "'Outfit', sans-serif" }}>QuietCutter</span>
+            <p className="text-xs text-muted-foreground tracking-[0.2em] uppercase">&mdash; Make Every Second Count &mdash;</p>
+          </div>
+
           {activeFiles.length > 0 && (
             <Card className="border-blue-500/30 bg-blue-500/5">
               <CardContent className="p-4">
