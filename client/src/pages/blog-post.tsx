@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -157,6 +157,10 @@ export default function BlogPost() {
   const post = blogPosts[postId];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [postId]);
 
   if (!post) {
     return (
