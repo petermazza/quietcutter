@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, Star, Download, Trash2, Loader2, LogOut, Video, Crown, Save, Play, Pause, Package, Lock, X, FileAudio, FileVideo, Timer, ArrowRight, ChevronDown, ChevronUp, Plus, FolderOpen, Menu } from "lucide-react";
+import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, Star, Download, Trash2, Loader2, LogOut, Video, Crown, Save, Play, Pause, Package, Lock, X, FileAudio, FileVideo, Timer, ArrowRight, ChevronDown, ChevronUp, Plus, FolderOpen, Menu, SlidersHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import type { ProjectResponse, ProjectFileResponse } from "@shared/routes";
@@ -1006,30 +1006,30 @@ export default function Home() {
             <Button size="icon" variant="ghost" className="absolute top-3 right-3" onClick={() => setShowSignInModal(false)} data-testid="button-close-sign-in-modal">
               <X className="h-4 w-4" />
             </Button>
-            <CardContent className="p-6 pt-8 text-center space-y-5">
-              <div className="space-y-1">
-                <div className="flex items-center justify-center gap-2">
-                  <img src={logoImage} alt="QuietCutter" className="w-8 h-8 rounded-lg" />
-                  <span className="font-semibold text-lg" style={{ fontFamily: "'Outfit', sans-serif" }}>QuietCutter</span>
+            <CardContent className="p-8 pt-10 text-center space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2.5">
+                  <img src={logoImage} alt="QuietCutter" className="w-10 h-10 rounded-lg" />
+                  <span className="font-semibold text-xl" style={{ fontFamily: "'Outfit', sans-serif" }}>QuietCutter</span>
                 </div>
-                <p className="text-xs text-muted-foreground tracking-widest uppercase">&mdash; Make Every Second Count &mdash;</p>
+                <p className="text-[11px] text-muted-foreground tracking-widest uppercase">&mdash; Make Every Second Count &mdash;</p>
               </div>
-              <div className="text-left space-y-2.5 px-2">
-                <div className="flex items-start gap-2.5">
+              <div className="text-left space-y-3 px-1">
+                <div className="flex items-start gap-3">
                   <FileAudio className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                   <span className="text-sm text-muted-foreground">Remove silence from audio and video automatically</span>
                 </div>
-                <div className="flex items-start gap-2.5">
-                  <Settings className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <div className="flex items-start gap-3">
+                  <SlidersHorizontal className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                   <span className="text-sm text-muted-foreground">Choose from quick presets or customize settings</span>
                 </div>
-                <div className="flex items-start gap-2.5">
+                <div className="flex items-start gap-3">
                   <Download className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                   <span className="text-sm text-muted-foreground">Download clean, polished files instantly</span>
                 </div>
               </div>
-              <a href="/api/login" className="block">
-                <Button className="w-full gap-2" data-testid="button-sign-in-modal">
+              <a href="/api/login" className="block pt-1">
+                <Button className="w-full gap-2 bg-gradient-to-r from-blue-500 to-purple-500 border-0 text-white" data-testid="button-sign-in-modal">
                   Sign in to get started
                   <ArrowRight className="w-4 h-4" />
                 </Button>
