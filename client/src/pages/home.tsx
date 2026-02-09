@@ -595,11 +595,16 @@ export default function Home() {
               <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
                 <h2 className="font-semibold text-sm">Upload Audio / Video</h2>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {isPro && (
+                  {isPro ? (
                     <Badge className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border-blue-500/30" data-testid="badge-pro-batch">
                       Up to 3 files
                     </Badge>
-                  )}
+                  ) : isAuthenticated ? (
+                    <Badge variant="outline" className="text-muted-foreground gap-1" data-testid="badge-single-file">
+                      <Lock className="w-2.5 h-2.5" />
+                      1 file
+                    </Badge>
+                  ) : null}
                   <Badge variant="outline" className="text-muted-foreground" data-testid="badge-size-limit">
                     {isPro ? "500MB" : "100MB"} max
                   </Badge>
@@ -676,6 +681,54 @@ export default function Home() {
             </CardContent>
           </Card>
 
+          {isAuthenticated && !isPro && (
+            <Card className="border-purple-500/30 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-indigo-500/10 overflow-visible" data-testid="card-upgrade-cta">
+              <CardContent className="p-4 md:p-5">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="space-y-3 flex-1 min-w-[200px]">
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-5 h-5 text-amber-400" />
+                      <h2 className="font-semibold text-sm">Unlock the Full Experience</h2>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <FolderOpen className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground">Unlimited projects</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Upload className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground">500MB files, batch upload</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FileAudio className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground">WAV, FLAC & MP3 320k output</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground">All presets & custom presets</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Play className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground">Audio preview & waveform</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Package className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground">Bulk download as ZIP</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                    <Button size="sm" className="rounded-full gap-1.5 bg-gradient-to-r from-blue-500 to-purple-500" onClick={handleUpgrade} data-testid="button-upgrade-cta">
+                      <Crown className="w-3.5 h-3.5" />
+                      Upgrade to Pro
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground">From $9.99/month</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent className="p-4 md:p-5">
               <button
@@ -689,22 +742,30 @@ export default function Home() {
 
               {showPresetsSection && (
                 <div className="mt-4 space-y-4">
-                  {isPro && (
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-md bg-background/50 border border-border/50">
+                  {isAuthenticated && (
+                    <div className={`flex items-center justify-between gap-4 p-3 rounded-md border border-border/50 ${isPro ? "bg-background/50" : "bg-background/30 opacity-75"}`}>
                       <div className="flex items-center gap-2">
                         <Crown className="w-4 h-4 text-amber-400" />
                         <span className="text-sm font-medium">Output Format</span>
+                        {!isPro && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-amber-400 border-amber-500/30">PRO</Badge>}
                       </div>
-                      <Select value={outputFormat} onValueChange={setOutputFormat}>
-                        <SelectTrigger className="w-28" data-testid="select-output-format">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="mp3">MP3 (320k)</SelectItem>
-                          <SelectItem value="wav">WAV</SelectItem>
-                          <SelectItem value="flac">FLAC</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {isPro ? (
+                        <Select value={outputFormat} onValueChange={setOutputFormat}>
+                          <SelectTrigger className="w-28" data-testid="select-output-format">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mp3">MP3 (320k)</SelectItem>
+                            <SelectItem value="wav">WAV</SelectItem>
+                            <SelectItem value="flac">FLAC</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">MP3 only</span>
+                          <Lock className="w-3 h-3 text-muted-foreground" />
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -727,6 +788,13 @@ export default function Home() {
                         </Button>
                       ))}
                     </div>
+                    {isAuthenticated && !isPro && (
+                      <button onClick={handleUpgrade} className="w-full mt-1.5 flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-amber-400/80 rounded-md transition-colors" data-testid="button-unlock-presets">
+                        <Crown className="w-3 h-3" />
+                        <span>Unlock all presets & save custom presets</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
 
                   {isPro && customPresets && customPresets.length > 0 && (
@@ -888,7 +956,17 @@ export default function Home() {
           {/* Projects Section */}
           <div>
             <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
-              <h2 className="font-semibold text-sm">Your Projects</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-semibold text-sm">Your Projects</h2>
+                {isAuthenticated && !isPro && projects && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground gap-1" data-testid="badge-project-limit">
+                    {projects.length} of 1 project
+                    <button onClick={handleUpgrade} className="text-amber-400 ml-0.5">
+                      <ArrowRight className="w-2.5 h-2.5 inline" />
+                    </button>
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {isPro && completedFileCount > 0 && (
                   <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={handleBulkDownload} data-testid="button-bulk-download">
@@ -993,20 +1071,6 @@ export default function Home() {
             )}
           </div>
 
-          {!isPro && (
-            <Card className="border-primary/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
-              <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <p className="text-sm font-medium">Free plan: 1 project, 100MB limit</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Upgrade for unlimited projects, batch upload, and more</p>
-                </div>
-                <Button size="sm" className="rounded-full gap-1 bg-gradient-to-r from-blue-500 to-purple-500 text-xs" onClick={handleUpgrade} data-testid="button-upgrade-bottom">
-                  <Crown className="w-3 h-3" />
-                  Upgrade to Pro
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </main>
 
