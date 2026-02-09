@@ -1001,7 +1001,7 @@ export default function Home() {
       )}
 
       {showSignInModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-sign-in" onClick={() => setShowSignInModal(false)} onKeyDown={(e) => { if (e.key === "Escape") setShowSignInModal(false); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-sign-in" onClick={() => setShowSignInModal(false)} onKeyDown={(e) => { if (e.key === "Escape") setShowSignInModal(false); }} tabIndex={-1} ref={(el) => el?.focus()}>
           <Card className="w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
             <CardContent className="px-10 pt-6 pb-12 text-center space-y-8">
               <div className="flex justify-end -mr-5">
