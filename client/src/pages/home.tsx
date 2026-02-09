@@ -87,7 +87,7 @@ export default function Home() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (selectedProjectId) return;
+    if (selectedProjectId && selectedProjectId !== "default") return;
     if (projects?.length) {
       const myUploads = projects.find(p => p.name === "My Uploads");
       setSelectedProjectId(String(myUploads ? myUploads.id : projects[0].id));
@@ -107,6 +107,19 @@ export default function Home() {
   });
 
   const selectedProject = projects?.find(p => p.id === (selectedProjectId ? parseInt(selectedProjectId) : -1)) || null;
+
+  const projectSettingsKey = selectedProject
+    ? `${selectedProject.id}-${selectedProject.silenceThreshold}-${selectedProject.minSilenceDuration}-${selectedProject.outputFormat}`
+    : null;
+
+  useEffect(() => {
+    if (selectedProject) {
+      setSilenceThreshold(selectedProject.silenceThreshold ?? -40);
+      setMinSilenceDuration((selectedProject.minSilenceDuration ?? 500) / 1000);
+      setOutputFormat(selectedProject.outputFormat ?? "mp3");
+      setSelectedPreset(null);
+    }
+  }, [projectSettingsKey]);
 
   const createProjectMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -176,6 +189,34 @@ export default function Home() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/presets"] });
       toast({ title: "Preset deleted" });
+    },
+  });
+
+  const saveProjectSettingsMutation = useMutation({
+    mutationFn: async ({ id, settings }: { id: number; settings: { silenceThreshold: number; minSilenceDuration: number; outputFormat: string } }) => {
+      const res = await apiRequest("PATCH", `/api/projects/${id}`, settings);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({ title: "Project settings saved" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save settings", variant: "destructive" });
+    },
+  });
+
+  const reprocessMutation = useMutation({
+    mutationFn: async (projectId: number) => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/reprocess`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({ title: "Reprocessing started", description: "All files are being reprocessed with the current project settings." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err?.message || "Failed to reprocess files", variant: "destructive" });
     },
   });
 
@@ -797,6 +838,45 @@ export default function Home() {
                             </div>
                           )}
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {isAuthenticated && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/50 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        disabled={!selectedProject || saveProjectSettingsMutation.isPending}
+                        onClick={() => {
+                          if (!selectedProject) return;
+                          saveProjectSettingsMutation.mutate({
+                            id: selectedProject.id,
+                            settings: {
+                              silenceThreshold,
+                              minSilenceDuration: Math.round(minSilenceDuration * 1000),
+                              outputFormat,
+                            },
+                          });
+                        }}
+                        data-testid="button-save-project-settings"
+                      >
+                        {saveProjectSettingsMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        Save to Project
+                      </Button>
+                      {selectedProject && selectedProject.files && selectedProject.files.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          disabled={reprocessMutation.isPending}
+                          onClick={() => reprocessMutation.mutate(selectedProject.id)}
+                          data-testid="button-reprocess-all"
+                        >
+                          {reprocessMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <SlidersHorizontal className="w-4 h-4" />}
+                          Reprocess All Files
+                        </Button>
                       )}
                     </div>
                   )}

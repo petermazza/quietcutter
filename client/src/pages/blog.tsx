@@ -38,13 +38,6 @@ const blogPosts = [
     date: "2023-12-28",
     category: "Tips",
   },
-  {
-    id: 5,
-    title: "The Future of Audio Editing with AI",
-    excerpt: "Explore how artificial intelligence is transforming the way we edit and produce audio content.",
-    date: "2023-12-20",
-    category: "Industry",
-  },
 ];
 
 export default function Blog() {

@@ -20,10 +20,11 @@ QuietCutter is a fully functional audio/video silence removal application with a
 4. **Video Processing**: FFmpeg extracts audio from video files, processes silence removal, outputs processed audio
 5. **Batch Upload**: Pro subscribers can upload up to 3 files simultaneously
 6. **Multi-File Projects**: Projects are containers holding multiple files. Users can create named projects, add files to them, and manage files individually.
-7. **Stripe Integration**: Pro upgrade subscription checkout ($9.99/month or $79.99/year)
-8. **Contact Form**: Saves to database
-9. **Blog**: Individual blog post pages with full content
-10. **Security**: User-scoped projects, ownership checks on all modifications
+7. **Project-Level Settings**: Each project stores its own silence threshold, min silence duration, and output format. Switching projects auto-loads that project's settings. Users can save current settings to a project and reprocess all files with updated settings.
+8. **Stripe Integration**: Pro upgrade subscription checkout ($9.99/month or $79.99/year)
+9. **Contact Form**: Saves to database
+10. **Blog**: Individual blog post pages with full content (4 posts)
+11. **Security**: User-scoped projects, ownership checks on all modifications
 
 ## Free vs. Pro Features
 
@@ -75,7 +76,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 ### Database Schema
 - **users**: User accounts (from Replit Auth)
 - **sessions**: Auth session management
-- **projects**: Named containers with userId, name, isFavorite, createdAt
+- **projects**: Named containers with userId, name, isFavorite, silenceThreshold, minSilenceDuration, outputFormat, createdAt
 - **project_files**: Individual files within projects with originalFileName, filePath, processedFilePath, status, settings, durations, fileType, fileSizeBytes
 - **custom_presets**: User-saved presets with threshold and duration settings (Pro only)
 - **contact_messages**: Contact form submissions
@@ -85,7 +86,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - `GET /api/projects` - List user's projects (with nested files array)
 - `GET /api/projects/:id` - Get single project with files
 - `POST /api/projects` - Create empty project container
-- `PATCH /api/projects/:id` - Update project (name, favorite)
+- `PATCH /api/projects/:id` - Update project (name, favorite, settings)
 - `DELETE /api/projects/:id` - Delete project and all its files
 - `GET /api/projects/favorites` - List user's favorite projects
 - `POST /api/upload` - Upload file(s) to a project (creates project if no projectId given)
@@ -93,6 +94,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - `GET /api/files/:id/preview` - Stream processed audio for preview (Pro only)
 - `DELETE /api/files/:id` - Delete individual file from project
 - `GET /api/projects/bulk-download` - Download all completed files as ZIP (Pro only)
+- `POST /api/projects/:id/reprocess` - Reprocess all files in project with project's settings
 - `PATCH /api/projects/:id/favorite` - Toggle favorite status
 - `GET /api/subscription/status` - Check if user has active Pro subscription
 - `GET /api/presets` - List user's custom presets

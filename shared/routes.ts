@@ -36,6 +36,9 @@ const projectResponseSchema = z.object({
   name: z.string(),
   userId: z.string().nullable().optional(),
   isFavorite: z.boolean().nullable().optional(),
+  silenceThreshold: z.number().optional(),
+  minSilenceDuration: z.number().optional(),
+  outputFormat: z.string().optional(),
   createdAt: z.string().nullable(),
   files: z.array(projectFileResponseSchema).optional(),
 });
@@ -60,7 +63,12 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/projects',
-      input: z.object({ name: z.string().min(1) }),
+      input: z.object({
+        name: z.string().min(1),
+        silenceThreshold: z.number().optional(),
+        minSilenceDuration: z.number().optional(),
+        outputFormat: z.string().optional(),
+      }),
       responses: {
         201: projectResponseSchema,
         400: errorSchemas.validation,
@@ -69,7 +77,13 @@ export const api = {
     update: {
       method: 'PATCH' as const,
       path: '/api/projects/:id',
-      input: z.object({ name: z.string().optional(), isFavorite: z.boolean().optional() }),
+      input: z.object({
+        name: z.string().optional(),
+        isFavorite: z.boolean().optional(),
+        silenceThreshold: z.number().optional(),
+        minSilenceDuration: z.number().optional(),
+        outputFormat: z.string().optional(),
+      }),
       responses: {
         200: projectResponseSchema,
         400: errorSchemas.validation,

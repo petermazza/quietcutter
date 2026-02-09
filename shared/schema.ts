@@ -10,6 +10,9 @@ export const projects = pgTable("projects", {
   userId: varchar("user_id"),
   name: text("name").notNull(),
   isFavorite: boolean("is_favorite").notNull().default(false),
+  silenceThreshold: integer("silence_threshold").notNull().default(-40),
+  minSilenceDuration: integer("min_silence_duration").notNull().default(500),
+  outputFormat: text("output_format").notNull().default("mp3"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

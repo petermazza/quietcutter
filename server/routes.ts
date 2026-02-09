@@ -180,6 +180,9 @@ export async function registerRoutes(
       const project = await storage.createProject({
         name: input.name,
         userId,
+        silenceThreshold: input.silenceThreshold,
+        minSilenceDuration: input.minSilenceDuration,
+        outputFormat: input.outputFormat,
       });
       res.status(201).json({ ...project, files: [] });
     } catch (err) {
@@ -445,6 +448,62 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error updating favorite:", err);
       res.status(500).json({ message: "Failed to update favorite" });
+    }
+  });
+
+  app.post("/api/projects/:id/reprocess", async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id as string, 10);
+      const userId = req.user?.claims?.sub || null;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+
+      const project = await storage.getProject(id);
+      if (!project) return res.status(404).json({ message: "Project not found" });
+      if (project.userId && project.userId !== userId) return res.status(403).json({ message: "Access denied" });
+
+      const isPro = await checkIsPro(userId);
+      const files = await storage.getProjectFiles(id);
+      const filesToReprocess = files.filter(f => f.originalFilePath && fs.existsSync(f.originalFilePath));
+
+      if (filesToReprocess.length === 0) {
+        return res.status(400).json({ message: "No files available to reprocess" });
+      }
+
+      const resolvedFormat = isPro && project.outputFormat ? project.outputFormat : "mp3";
+
+      for (const file of filesToReprocess) {
+        if (file.processedFilePath) {
+          try { fs.unlinkSync(file.processedFilePath); } catch {}
+        }
+
+        await storage.updateProjectFile(file.id, {
+          status: "pending",
+          processedFilePath: null,
+          silenceThreshold: project.silenceThreshold,
+          minSilenceDuration: project.minSilenceDuration,
+          outputFormat: resolvedFormat,
+          originalDurationSec: null,
+          processedDurationSec: null,
+          processingTimeMs: null,
+        });
+
+        const isVideo = file.fileType === "video";
+        enqueueProcessing({
+          fileId: file.id,
+          inputPath: file.originalFilePath!,
+          threshold: project.silenceThreshold,
+          minDuration: project.minSilenceDuration,
+          isVideo,
+          outputFormat: resolvedFormat,
+          isPro,
+        });
+      }
+
+      const updatedFiles = await storage.getProjectFiles(id);
+      res.json({ ...project, files: updatedFiles });
+    } catch (err) {
+      console.error("Error reprocessing project:", err);
+      res.status(500).json({ message: "Failed to reprocess project files" });
     }
   });
 

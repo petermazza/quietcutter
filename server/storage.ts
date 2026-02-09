@@ -20,8 +20,8 @@ export interface IStorage {
   getProjectCount(userId: string): Promise<number>;
   getOldestProject(userId: string): Promise<Project | undefined>;
   getDefaultProject(userId: string): Promise<Project>;
-  createProject(project: { name: string; userId?: string | null }): Promise<Project>;
-  updateProject(id: number, updates: Partial<{ name: string; isFavorite: boolean }>): Promise<Project | undefined>;
+  createProject(project: { name: string; userId?: string | null; silenceThreshold?: number; minSilenceDuration?: number; outputFormat?: string }): Promise<Project>;
+  updateProject(id: number, updates: Partial<{ name: string; isFavorite: boolean; silenceThreshold: number; minSilenceDuration: number; outputFormat: string }>): Promise<Project | undefined>;
   deleteProject(id: number): Promise<boolean>;
   getFavorites(userId?: string | null): Promise<Project[]>;
 
@@ -91,15 +91,19 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async createProject(project: { name: string; userId?: string | null }): Promise<Project> {
-    const [created] = await db.insert(projects).values({
+  async createProject(project: { name: string; userId?: string | null; silenceThreshold?: number; minSilenceDuration?: number; outputFormat?: string }): Promise<Project> {
+    const values: any = {
       name: project.name,
       userId: project.userId,
-    }).returning();
+    };
+    if (project.silenceThreshold !== undefined) values.silenceThreshold = project.silenceThreshold;
+    if (project.minSilenceDuration !== undefined) values.minSilenceDuration = project.minSilenceDuration;
+    if (project.outputFormat !== undefined) values.outputFormat = project.outputFormat;
+    const [created] = await db.insert(projects).values(values).returning();
     return created;
   }
 
-  async updateProject(id: number, updates: Partial<{ name: string; isFavorite: boolean }>): Promise<Project | undefined> {
+  async updateProject(id: number, updates: Partial<{ name: string; isFavorite: boolean; silenceThreshold: number; minSilenceDuration: number; outputFormat: string }>): Promise<Project | undefined> {
     const [updated] = await db.update(projects)
       .set(updates)
       .where(eq(projects.id, id))
