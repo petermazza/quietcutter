@@ -1002,12 +1002,14 @@ export default function Home() {
 
       {showSignInModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-sign-in" onClick={() => setShowSignInModal(false)} onKeyDown={(e) => { if (e.key === "Escape") setShowSignInModal(false); }}>
-          <Card className="w-full max-w-md mx-4 relative" onClick={(e) => e.stopPropagation()}>
-            <Button size="icon" variant="ghost" className="absolute top-4 right-5 z-10" onClick={() => setShowSignInModal(false)} data-testid="button-close-sign-in-modal">
-              <X className="h-4 w-4" />
-            </Button>
-            <CardContent className="px-10 py-12 text-center space-y-8">
-              <div className="space-y-3">
+          <Card className="w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="px-10 pt-6 pb-12 text-center space-y-8">
+              <div className="flex justify-end -mr-5">
+                <Button size="icon" variant="ghost" onClick={() => setShowSignInModal(false)} data-testid="button-close-sign-in-modal">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="space-y-3 -mt-2">
                 <div className="flex flex-col items-center gap-3">
                   <img src={logoImage} alt="QuietCutter" className="w-14 h-14 rounded-xl" />
                   <span className="font-semibold text-2xl" style={{ fontFamily: "'Outfit', sans-serif" }}>QuietCutter</span>
