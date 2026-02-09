@@ -1006,13 +1006,27 @@ export default function Home() {
             <Button size="icon" variant="ghost" className="absolute top-3 right-3" onClick={() => setShowSignInModal(false)} data-testid="button-close-sign-in-modal">
               <X className="h-4 w-4" />
             </Button>
-            <CardContent className="p-6 pt-8 text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                <Upload className="w-6 h-6 text-primary" />
+            <CardContent className="p-6 pt-8 text-center space-y-5">
+              <div className="space-y-1">
+                <div className="flex items-center justify-center gap-2">
+                  <img src={logoImage} alt="QuietCutter" className="w-8 h-8 rounded-lg" />
+                  <span className="font-semibold text-lg" style={{ fontFamily: "'Outfit', sans-serif" }}>QuietCutter</span>
+                </div>
+                <p className="text-xs text-muted-foreground tracking-widest uppercase">&mdash; Make Every Second Count &mdash;</p>
               </div>
-              <div>
-                <h3 className="font-semibold text-base">Sign in required</h3>
-                <p className="text-sm text-muted-foreground mt-1">Sign in to upload and process your audio and video files.</p>
+              <div className="text-left space-y-2.5 px-2">
+                <div className="flex items-start gap-2.5">
+                  <FileAudio className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <span className="text-sm text-muted-foreground">Remove silence from audio and video automatically</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Settings className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <span className="text-sm text-muted-foreground">Choose from quick presets or customize settings</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Download className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <span className="text-sm text-muted-foreground">Download clean, polished files instantly</span>
+                </div>
               </div>
               <a href="/api/login" className="block">
                 <Button className="w-full gap-2" data-testid="button-sign-in-modal">
