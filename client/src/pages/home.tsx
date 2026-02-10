@@ -361,11 +361,11 @@ export default function Home() {
   };
 
   const handleDownload = (fileId: number) => {
-    window.open(`/api/files/${fileId}/download`, "_blank");
+    window.location.href = `/api/files/${fileId}/download`;
   };
 
   const handleBulkDownload = () => {
-    window.open("/api/projects/bulk-download", "_blank");
+    window.location.href = "/api/projects/bulk-download";
   };
 
   const handlePreview = useCallback((fileId: number) => {
