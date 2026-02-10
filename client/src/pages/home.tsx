@@ -1357,11 +1357,19 @@ function FileRow({
               <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: "100%" }} />
             </div>
             <span className="text-[10px] text-muted-foreground">{file.status === "pending" ? "Queued" : "Processing"}</span>
+            <Button variant="ghost" size="sm" className="gap-1 text-xs text-destructive flex-shrink-0" onClick={() => onDelete(file.id)} data-testid={`button-delete-file-${file.id}`}>
+              <Trash2 className="w-3 h-3" />
+            </Button>
           </div>
         )}
 
         {file.status === "failed" && (
-          <p className="text-[10px] text-red-400">Processing failed. Try uploading again.</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] text-red-400">Processing failed. Try uploading again.</p>
+            <Button variant="ghost" size="sm" className="gap-1 text-xs text-destructive flex-shrink-0" onClick={() => onDelete(file.id)} data-testid={`button-delete-file-${file.id}`}>
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          </div>
         )}
 
         {file.status === "completed" && file.originalDurationSec != null && (
