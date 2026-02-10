@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Upload, Mic, Monitor, GraduationCap, Users, Settings, Clock, Star, Download, Trash2, Loader2, LogOut, Video, Crown, Save, Play, Pause, Package, Lock, X, FileAudio, FileVideo, Timer, ArrowRight, ChevronDown, ChevronUp, Plus, FolderOpen, Menu, SlidersHorizontal } from "lucide-react";
+import { SiInstagram } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import type { ProjectResponse, ProjectFileResponse } from "@shared/routes";
@@ -1087,6 +1088,7 @@ export default function Home() {
             <Link href="/about" className="text-xs text-muted-foreground" data-testid="link-about-footer">About</Link>
             <Link href="/blog" className="text-xs text-muted-foreground" data-testid="link-blog-footer">Blog</Link>
             <Link href="/contact" className="text-xs text-muted-foreground" data-testid="link-contact-footer">Contact</Link>
+            <a href="https://instagram.com/quietcutterdotcom" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground inline-flex items-center gap-1" data-testid="link-instagram-footer"><SiInstagram className="w-3 h-3" /></a>
           </nav>
         </div>
       </footer>

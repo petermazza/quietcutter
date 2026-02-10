@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Mail, MessageSquare, Send, Menu, X, LogOut } from "lucide-react";
+import { SiInstagram } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/transparent_output_1770321954939.png";
@@ -175,9 +176,10 @@ export default function Contact() {
                 <MessageSquare className="w-6 h-6 text-purple-400" />
               </div>
               <h3 className="font-semibold mb-2">Social</h3>
-              <p className="text-sm text-muted-foreground">
-                @quietcutter
-              </p>
+              <a href="https://instagram.com/quietcutterdotcom" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground inline-flex items-center gap-1.5" data-testid="link-instagram-contact">
+                <SiInstagram className="w-3.5 h-3.5" />
+                @quietcutterdotcom
+              </a>
             </CardContent>
           </Card>
         </div>
@@ -254,6 +256,7 @@ export default function Contact() {
             <Link href="/about" className="text-xs text-muted-foreground" data-testid="link-about-footer">About</Link>
             <Link href="/blog" className="text-xs text-muted-foreground" data-testid="link-blog-footer">Blog</Link>
             <Link href="/contact" className="text-xs text-muted-foreground" data-testid="link-contact-footer">Contact</Link>
+            <a href="https://instagram.com/quietcutterdotcom" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground inline-flex items-center gap-1" data-testid="link-instagram-footer"><SiInstagram className="w-3 h-3" /></a>
           </nav>
         </div>
       </footer>

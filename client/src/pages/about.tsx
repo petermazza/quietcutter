@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Zap, Clock, Wand2, Menu, X, LogOut } from "lucide-react";
+import { SiInstagram } from "react-icons/si";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/transparent_output_1770321954939.png";
 
@@ -173,6 +174,7 @@ export default function About() {
             <Link href="/about" className="text-xs text-muted-foreground" data-testid="link-about-footer">About</Link>
             <Link href="/blog" className="text-xs text-muted-foreground" data-testid="link-blog-footer">Blog</Link>
             <Link href="/contact" className="text-xs text-muted-foreground" data-testid="link-contact-footer">Contact</Link>
+            <a href="https://instagram.com/quietcutterdotcom" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground inline-flex items-center gap-1" data-testid="link-instagram-footer"><SiInstagram className="w-3 h-3" /></a>
           </nav>
         </div>
       </footer>
