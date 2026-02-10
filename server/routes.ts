@@ -11,6 +11,7 @@ import path from "path";
 import fs from "fs";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey, getUncachableStripeClient, getStripeSync } from "./stripeClient";
+import { getUncachableResendClient } from "./resendClient";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -516,6 +517,28 @@ export async function registerRoutes(
       }
       
       const contactMessage = await storage.createContactMessage({ name, email, subject, message });
+
+      try {
+        const { client: resend, fromEmail } = await getUncachableResendClient();
+        await resend.emails.send({
+          from: fromEmail || "QuietCutter <noreply@quietcutter.com>",
+          to: "support@quietcutter.com",
+          replyTo: email,
+          subject: `[QuietCutter Contact] ${subject}`,
+          html: `
+            <h2>New Contact Form Message</h2>
+            <p><strong>From:</strong> ${name} (${email})</p>
+            <p><strong>Subject:</strong> ${subject}</p>
+            <hr />
+            <p>${message.replace(/\n/g, "<br />")}</p>
+            <hr />
+            <p style="color: #888; font-size: 12px;">Reply directly to this email to respond to ${name}.</p>
+          `,
+        });
+      } catch (emailErr) {
+        console.error("Failed to send contact email via Resend:", emailErr);
+      }
+
       res.status(201).json({ success: true, message: "Message sent successfully" });
     } catch (err) {
       console.error("Error saving contact message:", err);

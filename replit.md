@@ -22,7 +22,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 6. **Multi-File Projects**: Projects are containers holding multiple files. Users can create named projects, add files to them, and manage files individually.
 7. **Project-Level Settings**: Each project stores its own silence threshold, min silence duration, and output format. Switching projects auto-loads that project's settings. Users can save current settings to a project and reprocess all files with updated settings.
 8. **Stripe Integration**: Pro upgrade subscription checkout ($9.99/month or $79.99/year)
-9. **Contact Form**: Saves to database
+9. **Contact Form**: Saves to database and sends email to support@quietcutter.com via Resend
 10. **Blog**: Individual blog post pages with full content (4 posts)
 11. **Security**: User-scoped projects, ownership checks on all modifications
 
