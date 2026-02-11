@@ -34,7 +34,8 @@ const upload = multer({
     if ([...allowedAudioTypes, ...allowedVideoTypes].includes(file.mimetype) || file.originalname.match(allowedExtensions)) {
       cb(null, true);
     } else {
-      cb(new Error("Only audio and video files are allowed (MP3, WAV, OGG, FLAC, M4A, MP4, MOV, AVI, MKV, WEBM)"));
+      const ext = file.originalname.split('.').pop()?.toLowerCase() || 'unknown';
+      cb(new Error(`".${ext}" is not a supported file type. Please upload an audio file (MP3, WAV, OGG, FLAC, M4A) or video file (MP4, MOV, AVI, MKV, WEBM).`));
     }
   },
   limits: { fileSize: 500 * 1024 * 1024 },
@@ -267,11 +268,21 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/upload", upload.array("audio", 3), async (req: any, res) => {
+  app.post("/api/upload", (req: any, res: any, next: any) => {
+    upload.array("audio", 3)(req, res, (err: any) => {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ message: "File is too large. Free users can upload files up to 100MB, Pro users up to 500MB." });
+        }
+        return res.status(400).json({ message: err.message || "Upload failed. Please check your file and try again." });
+      }
+      next();
+    });
+  }, async (req: any, res) => {
     try {
       const files = req.files as Express.Multer.File[];
       if (!files || files.length === 0) {
-        return res.status(400).json({ message: "No file uploaded" });
+        return res.status(400).json({ message: "No file was uploaded. Please select an audio or video file to upload." });
       }
 
       const userId = req.user?.claims?.sub || null;
@@ -820,7 +831,9 @@ export async function registerRoutes(
         customerId = customer.id;
       }
       
-      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers['host'] || req.hostname;
+      const baseUrl = `${protocol}://${host}`;
       const session = await stripeService.createCheckoutSession(
         customerId,
         priceId,
@@ -851,21 +864,57 @@ async function getAudioDuration(filePath: string): Promise<number | null> {
   }
 }
 
+function spawnFFmpeg(args: string[], totalDuration: number | null, fileId: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const { spawn } = require("child_process");
+    const proc = spawn("ffmpeg", args);
+    let lastProgressUpdate = 0;
+
+    proc.stderr.on("data", (data: Buffer) => {
+      const line = data.toString();
+      if (totalDuration && totalDuration > 0) {
+        const timeMatch = line.match(/time=(\d+):(\d+):(\d+)\.(\d+)/);
+        if (timeMatch) {
+          const hours = parseInt(timeMatch[1]);
+          const minutes = parseInt(timeMatch[2]);
+          const seconds = parseInt(timeMatch[3]);
+          const hundredths = parseInt(timeMatch[4]);
+          const currentTime = hours * 3600 + minutes * 60 + seconds + hundredths / 100;
+          const progress = Math.min(Math.round((currentTime / totalDuration) * 100), 99);
+          const now = Date.now();
+          if (now - lastProgressUpdate > 500) {
+            lastProgressUpdate = now;
+            storage.updateProjectFile(fileId, { processingProgress: progress }).catch(() => {});
+          }
+        }
+      }
+    });
+
+    proc.on("close", (code: number) => {
+      if (code === 0) resolve();
+      else reject(new Error(`FFmpeg exited with code ${code}`));
+    });
+
+    proc.on("error", (err: Error) => reject(err));
+
+    setTimeout(() => {
+      try { proc.kill(); } catch {}
+      reject(new Error("FFmpeg timeout after 10 minutes"));
+    }, 600000);
+  });
+}
+
 async function processAudio(fileId: number, inputPath: string, threshold: number, minDuration: number, isVideo: boolean = false, outputFormat: string = "mp3") {
-  const { exec } = await import("child_process");
-  const { promisify } = await import("util");
-  const execAsync = promisify(exec);
   const startTime = Date.now();
   
   try {
-    await storage.updateProjectFile(fileId, { status: "processing" });
+    await storage.updateProjectFile(fileId, { status: "processing", processingProgress: 0 });
     
     let audioInputPath = inputPath;
     
     if (isVideo) {
       const extractedAudioPath = inputPath.replace(/\.[^/.]+$/, "_extracted.wav");
-      const extractCmd = `ffmpeg -i "${inputPath}" -vn -acodec pcm_s16le -ar 44100 -ac 2 -y "${extractedAudioPath}"`;
-      await execAsync(extractCmd, { timeout: 600000 });
+      await spawnFFmpeg(["-i", inputPath, "-vn", "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2", "-y", extractedAudioPath], null, fileId);
       audioInputPath = extractedAudioPath;
     }
     
@@ -876,18 +925,16 @@ async function processAudio(fileId: number, inputPath: string, threshold: number
     
     const silenceRemove = `silenceremove=start_periods=1:start_duration=0:start_threshold=${threshold}dB:detection=peak,aformat=sample_fmts=s16:sample_rates=44100,silenceremove=start_periods=0:start_duration=0:stop_periods=-1:stop_duration=${minDuration / 1000}:stop_threshold=${threshold}dB:detection=peak`;
     
-    let formatArgs = "";
+    const formatArgs: string[] = [];
     if (ext === "wav") {
-      formatArgs = "-acodec pcm_s16le";
+      formatArgs.push("-acodec", "pcm_s16le");
     } else if (ext === "flac") {
-      formatArgs = "-acodec flac";
+      formatArgs.push("-acodec", "flac");
     } else {
-      formatArgs = "-ab 320k";
+      formatArgs.push("-ab", "320k");
     }
     
-    const command = `ffmpeg -i "${audioInputPath}" -af "${silenceRemove}" ${formatArgs} -y "${outputPath}"`;
-    
-    await execAsync(command, { timeout: 600000 });
+    await spawnFFmpeg(["-i", audioInputPath, "-af", silenceRemove, ...formatArgs, "-y", outputPath], originalDuration, fileId);
     
     const processedDuration = await getAudioDuration(outputPath);
     const processingTime = Date.now() - startTime;
@@ -902,10 +949,11 @@ async function processAudio(fileId: number, inputPath: string, threshold: number
       originalDurationSec: originalDuration,
       processedDurationSec: processedDuration,
       processingTimeMs: processingTime,
+      processingProgress: 100,
     });
   } catch (err) {
     console.error("Error processing audio:", err);
     const processingTime = Date.now() - startTime;
-    await storage.updateProjectFile(fileId, { status: "failed", processingTimeMs: processingTime });
+    await storage.updateProjectFile(fileId, { status: "failed", processingTimeMs: processingTime, processingProgress: 0 });
   }
 }

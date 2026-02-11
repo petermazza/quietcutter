@@ -31,6 +31,7 @@ export const projectFiles = pgTable("project_files", {
   originalDurationSec: real("original_duration_sec"),
   processedDurationSec: real("processed_duration_sec"),
   processingTimeMs: integer("processing_time_ms"),
+  processingProgress: integer("processing_progress").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

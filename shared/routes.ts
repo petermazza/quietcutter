@@ -28,6 +28,7 @@ const projectFileResponseSchema = z.object({
   originalDurationSec: z.number().nullable().optional(),
   processedDurationSec: z.number().nullable().optional(),
   processingTimeMs: z.number().nullable().optional(),
+  processingProgress: z.number().nullable().optional(),
   createdAt: z.string().nullable(),
 });
 

@@ -87,15 +87,20 @@ export default function Home() {
     }
   }, [isAuthenticated]);
 
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const hasInitializedProject = useRef(false);
   useEffect(() => {
-    if (selectedProjectId && selectedProjectId !== "default") return;
+    if (hasInitializedProject.current) return;
     if (projects?.length) {
       const myUploads = projects.find(p => p.name === "My Uploads");
-      setSelectedProjectId(String(myUploads ? myUploads.id : projects[0].id));
+      const id = String(myUploads ? myUploads.id : projects[0].id);
+      setSelectedProjectId(id);
+      setExpandedProjectId(id);
+      hasInitializedProject.current = true;
     } else if (!isAuthenticated) {
       setSelectedProjectId("default");
     }
-  }, [projects, selectedProjectId, isAuthenticated]);
+  }, [projects, isAuthenticated]);
 
   const { data: subscriptionData } = useQuery<{ isPro: boolean }>({
     queryKey: ["/api/subscription/status"],
@@ -129,7 +134,9 @@ export default function Home() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      setSelectedProjectId(String(data.id));
+      const id = String(data.id);
+      setSelectedProjectId(id);
+      setExpandedProjectId(id);
       setShowNewProjectInput(false);
       setNewProjectName("");
       toast({ title: "Project created" });
@@ -223,11 +230,7 @@ export default function Home() {
 
   const handlePresetClick = (preset: { name: string; threshold: number; duration: number; free?: boolean }) => {
     if (!preset.free && !isPro) {
-      toast({
-        title: "Pro feature",
-        description: `The "${preset.name}" preset is available for Pro subscribers.`,
-        variant: "destructive",
-      });
+      handleUpgrade();
       return;
     }
     setSelectedPreset(preset.name);
@@ -256,10 +259,23 @@ export default function Home() {
     if (fileArray.length > 3) {
       toast({
         title: "Too many files",
-        description: "You can upload up to 3 files at once.",
+        description: "You can upload up to 3 files at a time.",
         variant: "destructive",
       });
       return;
+    }
+
+    const allowedExtensions = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'mp4', 'mov', 'avi', 'mkv', 'webm'];
+    for (const file of fileArray) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      if (!allowedExtensions.includes(ext)) {
+        toast({
+          title: "Unsupported file type",
+          description: `".${ext}" is not supported. Please upload an audio file (MP3, WAV, OGG, FLAC, M4A) or video file (MP4, MOV, AVI, MKV, WEBM).`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     const fileSizeLimit = isPro ? 500 * 1024 * 1024 : 100 * 1024 * 1024;
@@ -305,7 +321,9 @@ export default function Home() {
 
       const responseData = await res.json();
       if (responseData?.id) {
-        setSelectedProjectId(String(responseData.id));
+        const id = String(responseData.id);
+        setSelectedProjectId(id);
+        setExpandedProjectId(id);
       }
 
       toast({
@@ -326,7 +344,7 @@ export default function Home() {
         if (!hasProcessing) {
           clearInterval(pollInterval);
         }
-      }, 2000);
+      }, 1000);
 
     } catch (err: any) {
       toast({
@@ -577,26 +595,6 @@ export default function Home() {
             <p className="text-xs text-muted-foreground tracking-[0.2em] uppercase">&mdash; Make Every Second Count &mdash;</p>
           </div>
 
-          {activeFiles.length > 0 && (
-            <Card className="border-blue-500/30 bg-blue-500/5">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Loader2 className="w-5 h-5 text-blue-400 animate-spin flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">Processing {activeFiles.length} file{activeFiles.length > 1 ? "s" : ""}...</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Removing silence from your files</p>
-                  </div>
-                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 flex-shrink-0">
-                    {activeFiles.some(f => f.status === "processing") ? "Processing" : "In Queue"}
-                  </Badge>
-                </div>
-                <div className="mt-3 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: "100%" }} />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           <Card>
             <CardContent className="p-4 md:p-5">
               <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
@@ -618,7 +616,54 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Project selector for upload destination */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="text-xs text-muted-foreground">Preset:</span>
+                <Select
+                  value={selectedPreset || "custom"}
+                  onValueChange={(val) => {
+                    if (val === "custom") {
+                      setSelectedPreset(null);
+                      return;
+                    }
+                    if (val.startsWith("pro_locked_")) {
+                      handleUpgrade();
+                      return;
+                    }
+                    const allPresets = [...presets, ...(customPresets || []).map(cp => ({ name: cp.name, threshold: cp.silenceThreshold, duration: cp.minSilenceDuration, free: true }))];
+                    const found = allPresets.find(p => p.name === val);
+                    if (found) handlePresetClick(found);
+                  }}
+                >
+                  <SelectTrigger className="w-40" data-testid="select-preset-dropdown">
+                    <SelectValue placeholder="Custom" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Custom</SelectItem>
+                    {presets.map(p => {
+                      const isLocked = !p.free && !isPro;
+                      return (
+                        <SelectItem key={p.name} value={isLocked ? `pro_locked_${p.name}` : p.name}>
+                          {isLocked ? (
+                            <span className="flex items-center gap-1.5">
+                              <Lock className="w-3 h-3 text-amber-400" />
+                              {p.name} {`${p.threshold}dB / ${p.duration}ms`}
+                            </span>
+                          ) : (
+                            <span>{p.name} {`${p.threshold}dB / ${p.duration}ms`}</span>
+                          )}
+                        </SelectItem>
+                      );
+                    })}
+                    {isPro && customPresets && customPresets.map(cp => (
+                      <SelectItem key={cp.id} value={cp.name}>
+                        {cp.name} {`${cp.silenceThreshold}dB / ${cp.minSilenceDuration}ms`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-[10px] text-muted-foreground">{silenceThreshold}dB / {Math.round(minSilenceDuration * 1000)}ms</span>
+              </div>
+
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-xs text-muted-foreground">Upload to:</span>
                 <Select
@@ -779,21 +824,25 @@ export default function Home() {
                   <div>
                     <h3 className="text-xs font-medium text-muted-foreground mb-2">Quick Presets</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {presets.map((preset) => (
-                        <Button
-                          key={preset.name}
-                          variant="outline"
-                          onClick={() => handlePresetClick(preset)}
-                          className={`h-auto flex-col py-3 gap-1 relative ${
-                            selectedPreset === preset.name ? "border-primary bg-primary/10" : ""
-                          } ${!preset.free && !isPro ? "opacity-60" : ""}`}
-                          data-testid={`button-preset-${preset.name.toLowerCase().replace(" ", "-")}`}
-                        >
-                          {!preset.free && !isPro && <Lock className="w-3 h-3 absolute top-1.5 right-1.5 text-muted-foreground" />}
-                          <preset.icon className={`w-5 h-5 ${selectedPreset === preset.name ? "text-primary" : "text-muted-foreground"}`} />
-                          <span className="text-xs">{preset.name}</span>
-                        </Button>
-                      ))}
+                      {presets.map((preset) => {
+                        const isLocked = !preset.free && !isPro;
+                        return (
+                          <Button
+                            key={preset.name}
+                            variant="outline"
+                            onClick={() => handlePresetClick(preset)}
+                            className={`h-auto flex-col py-3 gap-1 relative ${
+                              selectedPreset === preset.name ? "border-primary bg-primary/10" : ""
+                            } ${isLocked ? "opacity-60" : ""}`}
+                            data-testid={`button-preset-${preset.name.toLowerCase().replace(" ", "-")}`}
+                          >
+                            {isLocked && <Lock className="w-3 h-3 absolute top-1.5 right-1.5 text-muted-foreground" />}
+                            <preset.icon className={`w-5 h-5 ${selectedPreset === preset.name ? "text-primary" : "text-muted-foreground"}`} />
+                            <span className="text-xs">{preset.name}</span>
+                            <span className="text-[9px] text-muted-foreground">{preset.threshold}dB / {preset.duration}ms</span>
+                          </Button>
+                        );
+                      })}
                     </div>
                     {isAuthenticated && !isPro && (
                       <button onClick={handleUpgrade} className="w-full mt-1.5 flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-amber-400/80 rounded-md transition-colors" data-testid="button-unlock-presets">
@@ -950,7 +999,7 @@ export default function Home() {
                           data-testid="button-reprocess-all"
                         >
                           {reprocessMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <SlidersHorizontal className="w-4 h-4" />}
-                          Reprocess All Files
+                          Reprocess Project Files
                         </Button>
                       )}
                     </div>
@@ -966,11 +1015,16 @@ export default function Home() {
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-semibold text-sm">Your Projects</h2>
                 {isAuthenticated && !isPro && projects && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground gap-1" data-testid="badge-project-limit">
-                    {projects.length} of 1 project
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-amber-400/80 border-amber-500/30 gap-1" data-testid="badge-project-limit">
+                    {projects.length}/1 projects
                     <button onClick={handleUpgrade} className="text-amber-400 ml-0.5">
-                      <ArrowRight className="w-2.5 h-2.5 inline" />
+                      <Crown className="w-2.5 h-2.5 inline" />
                     </button>
+                  </Badge>
+                )}
+                {isAuthenticated && isPro && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground gap-1" data-testid="badge-project-count">
+                    {projects?.length || 0} project{(projects?.length || 0) !== 1 ? "s" : ""}
                   </Badge>
                 )}
               </div>
@@ -1022,10 +1076,18 @@ export default function Home() {
                   <ProjectCard
                     key={project.id}
                     project={project}
-                    isSelected={selectedProjectId === String(project.id)}
+                    isSelected={expandedProjectId === String(project.id)}
                     isPro={isPro}
                     playingFileId={playingFileId}
-                    onSelect={() => setSelectedProjectId(selectedProjectId === String(project.id) ? null : String(project.id))}
+                    onSelect={() => {
+                      const id = String(project.id);
+                      if (expandedProjectId === id) {
+                        setExpandedProjectId(null);
+                      } else {
+                        setExpandedProjectId(id);
+                        setSelectedProjectId(id);
+                      }
+                    }}
                     onDelete={() => {
                       if (window.confirm("Are you sure you want to delete this project and all its files?")) {
                         deleteProjectMutation.mutate(project.id);
@@ -1096,7 +1158,7 @@ export default function Home() {
       {showPricingModal && pricingData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-pricing" onClick={() => setShowPricingModal(false)}>
           <Card className="w-full max-w-lg mx-4 relative" onClick={(e) => e.stopPropagation()}>
-            <Button size="icon" variant="ghost" className="absolute top-3 right-3" onClick={() => setShowPricingModal(false)} data-testid="button-close-pricing">
+            <Button size="icon" variant="ghost" className="absolute top-3 right-3 z-10" onClick={() => setShowPricingModal(false)} data-testid="button-close-pricing">
               <X className="h-4 w-4" />
             </Button>
             <CardContent className="p-6">
@@ -1118,9 +1180,11 @@ export default function Home() {
                         className={`relative border rounded-md p-4 flex items-center justify-between gap-4 ${!isMonthly ? "border-yellow-500/50 bg-yellow-500/5" : "border-border"}`}
                         data-testid={`pricing-option-${isMonthly ? "monthly" : "yearly"}`}
                       >
-                        {!isMonthly && <Badge className="absolute -top-2.5 left-4 bg-yellow-500 text-black text-xs">Save 33%</Badge>}
                         <div>
-                          <p className="font-semibold text-foreground">{isMonthly ? "Monthly" : "Yearly"}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold text-foreground">{isMonthly ? "Monthly" : "Yearly"}</p>
+                            {!isMonthly && <Badge className="bg-yellow-500 text-black text-[10px] px-1.5 py-0">Save 33%</Badge>}
+                          </div>
                           <p className="text-2xl font-bold text-foreground">
                             ${amount}
                             <span className="text-sm font-normal text-muted-foreground">/{isMonthly ? "mo" : "yr"}</span>
@@ -1134,17 +1198,41 @@ export default function Home() {
                     );
                   })}
               </div>
-              <div className="mt-5 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground text-center">What you get with Pro:</p>
-                <div className="grid grid-cols-2 gap-1.5 text-xs text-muted-foreground">
-                  <span>Unlimited project history</span>
-                  <span>500MB file size limit</span>
-                  <span>All presets + custom presets</span>
-                  <span>MP3, WAV, FLAC output</span>
-                  <span>Batch upload (3 files)</span>
-                  <span>Priority processing</span>
-                  <span>Audio preview + waveform</span>
-                  <span>Bulk download as ZIP</span>
+              <div className="mt-5 space-y-2.5">
+                <p className="text-xs font-medium text-foreground/80 text-center">What you get with Pro:</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <FolderOpen className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <span className="text-foreground/70">Unlimited project history</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Upload className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <span className="text-foreground/70">500MB file size limit</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <SlidersHorizontal className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <span className="text-foreground/70">All presets + custom presets</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <FileAudio className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <span className="text-foreground/70">MP3, WAV, FLAC output</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Package className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <span className="text-foreground/70">Batch upload (3 files)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <span className="text-foreground/70">Priority processing</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Play className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <span className="text-foreground/70">Audio preview + waveform</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Download className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <span className="text-foreground/70">Bulk download as ZIP</span>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -1353,10 +1441,16 @@ function FileRow({
         {(file.status === "processing" || file.status === "pending") && (
           <div className="flex items-center gap-2">
             <Loader2 className="w-3 h-3 text-blue-400 animate-spin flex-shrink-0" />
-            <div className="h-1 flex-1 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: "100%" }} />
+            <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+              {file.status === "pending" ? (
+                <div className="h-full bg-yellow-500/50 rounded-full animate-pulse" style={{ width: "100%" }} />
+              ) : (
+                <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${Math.max(file.processingProgress || 0, 2)}%` }} />
+              )}
             </div>
-            <span className="text-[10px] text-muted-foreground">{file.status === "pending" ? "Queued" : "Processing"}</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums min-w-[60px] text-right">
+              {file.status === "pending" ? "Queued" : `${file.processingProgress || 0}%`}
+            </span>
             <Button variant="ghost" size="sm" className="gap-1 text-xs text-destructive flex-shrink-0" onClick={() => onDelete(file.id)} data-testid={`button-delete-file-${file.id}`}>
               <Trash2 className="w-3 h-3" />
             </Button>
@@ -1400,7 +1494,7 @@ function FileRow({
           </div>
         )}
 
-        {isPro && file.status === "completed" && (
+        {file.status === "completed" && isPro && (
           <div
             className="rounded-md overflow-hidden bg-background/50 p-1"
             ref={(el) => {
@@ -1410,6 +1504,23 @@ function FileRow({
             }}
             data-testid={`waveform-${file.id}`}
           />
+        )}
+
+        {file.status === "completed" && !isPro && (
+          <button
+            onClick={onUpgrade}
+            className="w-full rounded-md border border-border/50 bg-background/30 p-2.5 flex items-center justify-between gap-3"
+            data-testid={`teaser-preview-${file.id}`}
+          >
+            <div className="flex items-center gap-2">
+              <Play className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[11px] text-muted-foreground">Audio preview & waveform</span>
+            </div>
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 text-amber-400/80 border-amber-500/30 gap-1">
+              <Crown className="w-2.5 h-2.5" />
+              PRO
+            </Badge>
+          </button>
         )}
 
         {file.status === "completed" && (
