@@ -10,11 +10,6 @@ import { runMigrations as runDbMigrations } from './migrate';
 const app = express();
 const httpServer = createServer(app);
 
-// DIAGNOSTIC: Route registered before ALL middleware
-app.get("/api/ping", (req, res) => {
-  res.json({ pong: true, time: new Date().toISOString() });
-});
-
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;

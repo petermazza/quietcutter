@@ -147,24 +147,12 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // Register admin routes FIRST before anything else
-  console.log("[ROUTES] Registering admin routes...");
-  
-  app.get("/api/admin/test", (req: any, res) => {
-    console.log("[ADMIN TEST] Endpoint hit!");
-    res.json({ success: true, message: "Admin routing works!" });
-  });
-
   app.get("/api/admin/contact-messages", async (req: any, res) => {
-    console.log("[ADMIN] Contact messages endpoint hit");
-    
     try {
       const messages = await db
         .select()
         .from(contactMessages)
         .orderBy(sql`${contactMessages.createdAt} DESC`);
-      
-      console.log(`[ADMIN] Found ${messages.length} contact messages`);
       
       return res.status(200).json({
         success: true,
@@ -172,7 +160,7 @@ export async function registerRoutes(
         messages: messages
       });
     } catch (err) {
-      console.error("[ADMIN] Error fetching contact messages:", err);
+      console.error("Error fetching contact messages:", err);
       return res.status(500).json({ 
         success: false,
         message: "Failed to fetch messages",
@@ -180,23 +168,12 @@ export async function registerRoutes(
       });
     }
   });
-  
-  console.log("[ROUTES] Admin routes registered");
-  
+
   await setupAuth(app);
   registerAuthRoutes(app);
 
   app.get(api.projects.list.path, optionalAuth, async (req: any, res) => {
     try {
-      // WORKAROUND: Add ?admin=contact to get contact messages
-      if (req.query.admin === 'contact') {
-        const messages = await db
-          .select()
-          .from(contactMessages)
-          .orderBy(sql`${contactMessages.createdAt} DESC`);
-        return res.json({ success: true, count: messages.length, messages });
-      }
-      
       const userId = (req as any).user?.claims?.sub || (req as any).user?.id || null;
       if (!userId) return res.json([]);
       const projectList = await storage.getProjects(userId);
