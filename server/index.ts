@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
+import { runMigrations as runDbMigrations } from './migrate';
 
 const app = express();
 const httpServer = createServer(app);
@@ -182,6 +183,12 @@ app.use((req, res, next) => {
 (async () => {
   try {
     console.log('Starting server initialization...');
+    
+    // Run database migrations first
+    console.log('Running database migrations...');
+    await runDbMigrations();
+    console.log('Database migrations completed');
+    
     await initStripe();
     console.log('Stripe initialized');
     
