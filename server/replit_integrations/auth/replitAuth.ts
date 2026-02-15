@@ -134,7 +134,10 @@ export async function setupAuth(app: Express) {
       });
     });
   } catch (err) {
-    console.log('Replit auth not available (REPL_ID not set), skipping OIDC setup');
+    console.log('Replit auth not available (REPL_ID not set), setting up local auth instead');
+    // Setup local auth as fallback
+    const { setupLocalAuth } = await import('./localAuth');
+    setupLocalAuth(app);
   }
 }
 
