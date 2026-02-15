@@ -8,14 +8,15 @@ import { sql } from "drizzle-orm";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
+import { promises as fs } from 'fs';
+import fsSync from 'fs';
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey, getUncachableStripeClient, getStripeSync } from "./stripeClient";
 import { getUncachableResendClient } from "./resendClient";
 
 const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+if (!fsSync.existsSync(uploadDir)) {
+  fsSync.mkdirSync(uploadDir, { recursive: true });
 }
 
 const allowedAudioTypes = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/ogg", "audio/flac", "audio/m4a", "audio/x-m4a"];
@@ -72,7 +73,55 @@ const processingQueue: Array<{
 }> = [];
 let isProcessing = false;
 
-async function enqueueProcessing(item: typeof processingQueue[0]) {
+interface QueueItem {
+  fileId: number;
+  inputPath: string;
+  threshold: number;
+  minDuration: number;
+  isVideo: boolean;
+  outputFormat: string;
+  isPro: boolean;
+  timestamp: number;
+}
+
+const processingQueue: Array<QueueItem> = [];
+let isProcessing = false;
+let lastCleanupTime = Date.now();
+
+// Cleanup mechanism for processing queue
+const cleanupProcessingQueue = () => {
+  const now = Date.now();
+  const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
+  
+  // Only cleanup if 1 minute has passed since last cleanup
+  if (now - lastCleanupTime < 60 * 1000) {
+    return;
+  }
+  
+  lastCleanupTime = now;
+  
+  // Remove items that have been in queue too long (stale)
+  const initialLength = processingQueue.length;
+  processingQueue.splice(0, processingQueue.length, ...processingQueue.filter(item => {
+    const age = now - item.timestamp;
+    return age < TIMEOUT_MS;
+  }));
+  
+  if (processingQueue.length !== initialLength) {
+    console.log(`Cleaned up ${initialLength - processingQueue.length} stale items from processing queue`);
+  }
+  
+  // Reset processing flag if it's been stuck
+  if (isProcessing && processingQueue.length === 0) {
+    isProcessing = false;
+    console.log('Reset processing flag - queue was empty but flag was stuck');
+  }
+};
+
+// Set up periodic cleanup
+setInterval(cleanupProcessingQueue, 60 * 1000); // Check every minute
+
+async function enqueueProcessing(item: QueueItem) {
   if (item.isPro) {
     const firstFreeIndex = processingQueue.findIndex(q => !q.isPro);
     if (firstFreeIndex >= 0) {
@@ -245,8 +294,16 @@ export async function registerRoutes(
 
       const files = await storage.getProjectFiles(id);
       for (const file of files) {
-        if (file.originalFilePath) try { fs.unlinkSync(file.originalFilePath); } catch {}
-        if (file.processedFilePath) try { fs.unlinkSync(file.processedFilePath); } catch {}
+        if (file.originalFilePath) { 
+          try { await fs.unlink(file.originalFilePath); } catch (err) {
+            console.error('Failed to delete original file:', file.originalFilePath, err);
+          }
+        }
+        if (file.processedFilePath) { 
+          try { await fs.unlink(file.processedFilePath); } catch (err) {
+            console.error('Failed to delete processed file:', file.processedFilePath, err);
+          }
+        }
       }
       
       await storage.deleteProject(id);
@@ -292,7 +349,9 @@ export async function registerRoutes(
       for (const file of files) {
         if (file.size > fileSizeLimit) {
           for (const f of files) {
-            try { fs.unlinkSync(f.path); } catch {}
+            try { await fs.unlink(f.path); } catch (err) {
+              console.error('Failed to delete oversized file:', f.path, err);
+            }
           }
           const limitMB = Math.round(fileSizeLimit / (1024 * 1024));
           return res.status(413).json({ message: `File "${file.originalname}" exceeds the ${limitMB}MB limit. ${isPro ? "" : "Upgrade to Pro for 500MB uploads."}` });
@@ -301,7 +360,9 @@ export async function registerRoutes(
 
       if (files.length > 1 && !isPro) {
         for (const file of files) {
-          try { fs.unlinkSync(file.path); } catch {}
+          try { await fs.unlink(file.path); } catch (err) {
+            console.error('Failed to delete file during batch upload cleanup:', file.path, err);
+          }
         }
         return res.status(403).json({ message: "Batch upload is a Pro feature. Upgrade to upload up to 3 files at once." });
       }
@@ -314,11 +375,19 @@ export async function registerRoutes(
       if (existingProjectId) {
         const existingProject = await storage.getProject(parseInt(existingProjectId, 10));
         if (!existingProject) {
-          for (const file of files) { try { fs.unlinkSync(file.path); } catch {} }
+          for (const file of files) { 
+            try { await fs.unlink(file.path); } catch (err) {
+              console.error('Failed to delete file for non-existent project:', file.path, err);
+            }
+          }
           return res.status(404).json({ message: "Project not found" });
         }
         if (existingProject.userId && existingProject.userId !== userId) {
-          for (const file of files) { try { fs.unlinkSync(file.path); } catch {} }
+          for (const file of files) { 
+            try { await fs.unlink(file.path); } catch (err) {
+              console.error('Failed to delete file for unauthorized access:', file.path, err);
+            }
+          }
           return res.status(403).json({ message: "Access denied" });
         }
         projectId = existingProject.id;
@@ -330,8 +399,16 @@ export async function registerRoutes(
             if (oldest) {
               const oldFiles = await storage.getProjectFiles(oldest.id);
               for (const f of oldFiles) {
-                if (f.originalFilePath) try { fs.unlinkSync(f.originalFilePath); } catch {}
-                if (f.processedFilePath) try { fs.unlinkSync(f.processedFilePath); } catch {}
+                if (f.originalFilePath) { 
+                  try { await fs.unlink(f.originalFilePath); } catch (err) {
+                    console.error('Failed to delete old project original file:', f.originalFilePath, err);
+                  }
+                }
+                if (f.processedFilePath) { 
+                  try { await fs.unlink(f.processedFilePath); } catch (err) {
+                    console.error('Failed to delete old project processed file:', f.processedFilePath, err);
+                  }
+                }
               }
               await storage.deleteProject(oldest.id);
             }
@@ -368,10 +445,11 @@ export async function registerRoutes(
           fileId: projectFile.id,
           inputPath: file.path,
           threshold: parseInt(silenceThreshold) || -40,
-          minDuration: parseInt(minSilenceDuration) || 500,
-          isVideo,
+          minDuration: parseInt(minSilenceDuration) || 1,
+          isVideo: file.fileType === "video",
           outputFormat: resolvedFormat,
-          isPro,
+          isPro: isPro,
+          timestamp: Date.now()
         });
         createdFiles.push(projectFile);
       }
@@ -428,8 +506,16 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Access denied" });
       }
 
-      if (file.originalFilePath) try { fs.unlinkSync(file.originalFilePath); } catch {}
-      if (file.processedFilePath) try { fs.unlinkSync(file.processedFilePath); } catch {}
+      if (file.originalFilePath) { 
+        try { await fs.unlink(file.originalFilePath); } catch (err) {
+          console.error('Failed to delete file when deleting project file:', file.originalFilePath, err);
+        }
+      }
+      if (file.processedFilePath) { 
+        try { await fs.unlink(file.processedFilePath); } catch (err) {
+          console.error('Failed to delete processed file when deleting project file:', file.processedFilePath, err);
+        }
+      }
       
       await storage.deleteProjectFile(id);
       res.status(204).send();
@@ -485,7 +571,9 @@ export async function registerRoutes(
 
       for (const file of filesToReprocess) {
         if (file.processedFilePath) {
-          try { fs.unlinkSync(file.processedFilePath); } catch {}
+          try { await fs.unlink(file.processedFilePath); } catch (err) {
+            console.error('Failed to delete processed file during reprocess:', file.processedFilePath, err);
+          }
         }
 
         await storage.updateProjectFile(file.id, {
@@ -500,19 +588,12 @@ export async function registerRoutes(
         });
 
         const isVideo = file.fileType === "video";
-        enqueueProcessing({
-          fileId: file.id,
-          inputPath: file.originalFilePath!,
-          threshold: project.silenceThreshold,
-          minDuration: project.minSilenceDuration,
-          isVideo,
-          outputFormat: resolvedFormat,
-          isPro,
-        });
-      }
 
-      const updatedFiles = await storage.getProjectFiles(id);
-      res.json({ ...project, files: updatedFiles });
+app.post("/api/projects/:id/reprocess", async (req: any, res) => {
+try {
+const id = parseInt(req.params.id as string, 10);
+const userId = req.user?.claims?.sub || null;
+if (!userId) return res.status(401).json({ message: "Not authenticated" });
     } catch (err) {
       console.error("Error reprocessing project:", err);
       res.status(500).json({ message: "Failed to reprocess project files" });
@@ -884,7 +965,9 @@ function spawnFFmpeg(args: string[], totalDuration: number | null, fileId: numbe
           const now = Date.now();
           if (now - lastProgressUpdate > 500) {
             lastProgressUpdate = now;
-            storage.updateProjectFile(fileId, { processingProgress: progress }).catch(() => {});
+            storage.updateProjectFile(fileId, { processingProgress: progress }).catch((err) => {
+              console.error('Failed to update processing progress:', err);
+            });
           }
         }
       }
@@ -898,7 +981,9 @@ function spawnFFmpeg(args: string[], totalDuration: number | null, fileId: numbe
     proc.on("error", (err: Error) => reject(err));
 
     setTimeout(() => {
-      try { proc.kill(); } catch {}
+      try { proc.kill(); } catch (err) {
+        console.error('Failed to kill FFmpeg process:', err);
+      }
       reject(new Error("FFmpeg timeout after 10 minutes"));
     }, 600000);
   });
@@ -940,7 +1025,9 @@ async function processAudio(fileId: number, inputPath: string, threshold: number
     const processingTime = Date.now() - startTime;
     
     if (isVideo && audioInputPath !== inputPath) {
-      try { fs.unlinkSync(audioInputPath); } catch {}
+      try { await fs.unlink(audioInputPath); } catch (err) {
+        console.error('Failed to delete extracted audio file:', audioInputPath, err);
+      }
     }
     
     await storage.updateProjectFile(fileId, { 

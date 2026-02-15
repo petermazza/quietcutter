@@ -83,7 +83,9 @@ export default function Home() {
       defaultProjectCreated.current = true;
       fetch("/api/projects/default", { credentials: "include" })
         .then(() => queryClient.invalidateQueries({ queryKey: ["/api/projects"] }))
-        .catch(() => {});
+        .catch((err) => {
+          console.error('Failed to create default project:', err);
+        });
     }
   }, [isAuthenticated]);
 
@@ -404,19 +406,22 @@ export default function Home() {
     setPlayingFileId(fileId);
   }, [playingFileId, toast]);
 
-  useEffect(() => {
-    return () => { if (audioRef.current) audioRef.current.pause(); };
-  }, []);
-
   const initWaveform = useCallback(async (fileId: number, el: HTMLDivElement | null) => {
-    if (!el || wavesurferInstances.current[fileId]) return;
-    if (!isPro) return;
+    if (!el || !isPro) return;
+    
+    // Clean up existing instance for this file if it exists
+    if (wavesurferInstances.current[fileId]) {
+      try {
+        wavesurferInstances.current[fileId].destroy();
+      } catch (err) {
+        console.error('Failed to destroy existing WaveSurfer instance:', err);
+      }
+    }
+    
     try {
-      const WaveSurfer = (await import("wavesurfer.js")).default;
+      const WaveSurfer = (await import('wavesurfer.js')).default;
       const ws = WaveSurfer.create({
         container: el,
-        waveColor: "#4a9eff",
-        progressColor: "#1e6cbb",
         height: 48,
         barWidth: 2,
         barGap: 1,
@@ -427,13 +432,17 @@ export default function Home() {
         url: `/api/files/${fileId}/preview`,
       });
       wavesurferInstances.current[fileId] = ws;
-    } catch {}
+    } catch (err) {
+      console.error('Failed to initialize WaveSurfer for file:', fileId, err);
+    }
   }, [isPro]);
 
   useEffect(() => {
     return () => {
       Object.values(wavesurferInstances.current).forEach((ws: any) => {
-        try { ws.destroy(); } catch {}
+        try { ws.destroy(); } catch (err) {
+          console.error('Failed to destroy WaveSurfer instance:', err);
+        }
       });
       wavesurferInstances.current = {};
     };
@@ -1244,8 +1253,8 @@ export default function Home() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-sign-in" onClick={() => setShowSignInModal(false)} onKeyDown={(e) => { if (e.key === "Escape") setShowSignInModal(false); }} tabIndex={-1} ref={(el) => el?.focus()}>
           <Card className="w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
             <CardContent className="px-10 pt-6 pb-12 text-center space-y-8">
-              <div className="flex justify-end -mr-5">
-                <Button size="icon" variant="ghost" onClick={() => setShowSignInModal(false)} data-testid="button-close-sign-in-modal">
+              <div className="flex justify-end">
+                <Button size="icon" variant="ghost" onClick={() => setShowSignInModal(false)} data-testid="button-close-sign-in-modal" className="-mr-2 -mt-2">
                   <X className="h-4 w-4" />
                 </Button>
               </div>
