@@ -1166,11 +1166,13 @@ export default function Home() {
 
       {showPricingModal && pricingData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="modal-pricing" onClick={() => setShowPricingModal(false)}>
-          <Card className="w-full max-w-lg mx-4 relative" onClick={(e) => e.stopPropagation()}>
-            <Button size="icon" variant="ghost" className="absolute top-3 right-3 z-10" onClick={() => setShowPricingModal(false)} data-testid="button-close-pricing">
-              <X className="h-4 w-4" />
-            </Button>
+          <Card className="w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
             <CardContent className="p-6">
+              <div className="flex justify-end -mt-2 -mr-2">
+                <Button size="icon" variant="ghost" onClick={() => setShowPricingModal(false)} data-testid="button-close-pricing">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
               <div className="text-center mb-6">
                 <Crown className="h-10 w-10 text-yellow-400 mx-auto mb-3" />
                 <h2 className="text-xl font-bold text-foreground">Upgrade to {pricingData.name}</h2>
