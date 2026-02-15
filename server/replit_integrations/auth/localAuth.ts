@@ -55,12 +55,24 @@ export function setupLocalAuth(app: Express) {
     )
   );
 
-  passport.serializeUser((user: any, cb) => cb(null, user.id));
+  passport.serializeUser((user: any, cb) => {
+    console.log("Serializing user:", user.id);
+    cb(null, user.id);
+  });
+  
   passport.deserializeUser(async (id: string, cb) => {
     try {
-      const user = await authStorage.getUser(id);
+      console.log("Deserializing user:", id);
+      // Query database directly instead of using authStorage
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      if (!user) {
+        console.error("User not found during deserialization:", id);
+        return cb(new Error("User not found"));
+      }
+      console.log("Deserialized user:", user.email);
       cb(null, user);
     } catch (err) {
+      console.error("Deserialization error:", err);
       cb(err);
     }
   });
