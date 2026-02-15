@@ -229,6 +229,64 @@ app.use((req, res, next) => {
     await registerRoutes(httpServer, app);
     console.log('Routes registered');
 
+    // File cleanup cron job - runs daily
+    const startFileCleanup = async () => {
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      
+      const cleanupOldFiles = async () => {
+        try {
+          const { db } = await import('./db');
+          const { sql } = await import('drizzle-orm');
+          const { promises: fs } = await import('fs');
+          
+          const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS);
+          console.log('Running file cleanup job...');
+          
+          const result = await db.execute(sql`
+            SELECT id, processed_file_path, original_file_path 
+            FROM project_files 
+            WHERE created_at < ${sevenDaysAgo}
+            AND (processed_file_path IS NOT NULL OR original_file_path IS NOT NULL)
+          `);
+          
+          let deletedCount = 0;
+          for (const file of result.rows as any[]) {
+            if (file.processed_file_path) {
+              try {
+                await fs.unlink(file.processed_file_path);
+                deletedCount++;
+              } catch (err) {
+                // File may already be deleted
+              }
+            }
+            if (file.original_file_path) {
+              try {
+                await fs.unlink(file.original_file_path);
+                deletedCount++;
+              } catch (err) {
+                // File may already be deleted
+              }
+            }
+          }
+          
+          if (deletedCount > 0) {
+            console.log(`Cleanup job: Deleted ${deletedCount} old files`);
+          }
+        } catch (err) {
+          console.error('File cleanup job failed:', err);
+        }
+      };
+      
+      // Run immediately on startup
+      await cleanupOldFiles();
+      
+      // Then run daily
+      setInterval(cleanupOldFiles, 24 * 60 * 60 * 1000);
+      console.log('File cleanup cron job started (runs daily)');
+    };
+    
+    startFileCleanup();
+
     app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";

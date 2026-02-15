@@ -700,6 +700,54 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/files/batch-download", optionalAuth, async (req: any, res) => {
+    try {
+      const { fileIds } = req.body;
+      
+      if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+        return res.status(400).json({ message: "No files selected" });
+      }
+
+      const userId = req.user?.claims?.sub || req.user?.id || null;
+      const files = [];
+
+      for (const id of fileIds) {
+        const file = await storage.getProjectFile(parseInt(id, 10));
+        if (file && file.status === "completed" && file.processedFilePath) {
+          const project = await storage.getProject(file.projectId);
+          if (!project?.userId || project.userId === userId) {
+            files.push(file);
+          }
+        }
+      }
+
+      if (files.length === 0) {
+        return res.status(404).json({ message: "No files available to download" });
+      }
+
+      const archiver = (await import("archiver")).default;
+      const archive = archiver("zip", { zlib: { level: 5 } });
+
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", "attachment; filename=quietcutter_files.zip");
+
+      archive.pipe(res);
+
+      for (const file of files) {
+        if (fsSync.existsSync(file.processedFilePath!)) {
+          const ext = file.outputFormat || "mp3";
+          const name = file.originalFileName.replace(/\.[^/.]+$/, "");
+          archive.file(file.processedFilePath!, { name: `${name}_processed.${ext}` });
+        }
+      }
+
+      await archive.finalize();
+    } catch (err) {
+      console.error("Error creating batch download:", err);
+      res.status(500).json({ message: "Failed to create download" });
+    }
+  });
+
   app.get("/api/projects/bulk-download", async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
