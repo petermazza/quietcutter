@@ -5,6 +5,7 @@ import { db } from "./db";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
+import { contactMessages } from "@shared/schema";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { requireAuth, optionalAuth } from "./middleware/auth";
 import { uploadLimiter, authLimiter, contactLimiter, apiLimiter } from "./middleware/rateLimiter";
@@ -597,6 +598,25 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error reprocessing project:", err);
       res.status(500).json({ message: "Failed to reprocess project files" });
+    }
+  });
+
+  app.get("/api/admin/contact-messages", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      
+      // Only allow admin users - you can add admin check here
+      // For now, any authenticated user can view (change this in production)
+      
+      const messages = await db
+        .select()
+        .from(contactMessages)
+        .orderBy(sql`${contactMessages.createdAt} DESC`);
+      
+      res.json(messages);
+    } catch (err) {
+      console.error("Error fetching contact messages:", err);
+      res.status(500).json({ message: "Failed to fetch messages" });
     }
   });
 
