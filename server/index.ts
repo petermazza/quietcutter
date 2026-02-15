@@ -30,19 +30,29 @@ async function initStripe() {
     const stripeSync = await getStripeSync();
 
     console.log('Setting up managed webhook...');
-    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+    const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
+    const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
+    const webhookBaseUrl = railwayDomain 
+      ? `https://${railwayDomain}` 
+      : replitDomain 
+        ? `https://${replitDomain}` 
+        : null;
     
-    try {
-      const result = await stripeSync.findOrCreateManagedWebhook(
-        `${webhookBaseUrl}/api/stripe/webhook`
-      );
-      if (result?.webhook?.url) {
-        console.log(`Webhook configured: ${result.webhook.url}`);
-      } else {
-        console.log('Webhook setup completed (no URL returned)');
+    if (!webhookBaseUrl) {
+      console.log('No domain configured, skipping webhook setup');
+    } else {
+      try {
+        const result = await stripeSync.findOrCreateManagedWebhook(
+          `${webhookBaseUrl}/api/stripe/webhook`
+        );
+        if (result?.webhook?.url) {
+          console.log(`Webhook configured: ${result.webhook.url}`);
+        } else {
+          console.log('Webhook setup completed (no URL returned)');
+        }
+      } catch (webhookError) {
+        console.log('Webhook setup skipped (may already exist or not available in test mode)');
       }
-    } catch (webhookError) {
-      console.log('Webhook setup skipped (may already exist or not available in test mode)');
     }
 
     await stripeSync.syncBackfill().then(() => console.log('Stripe data synced'))
