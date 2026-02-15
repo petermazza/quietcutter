@@ -125,9 +125,12 @@ export function setupLocalAuth(app: Express) {
   });
 
   // Logout route (POST for API, GET for redirect)
-  app.post("/api/auth/logout", (req: any, res) => {
-    req.logout(() => {
-      res.json({ success: true });
+  app.post("/api/auth/logout", (req: any, res: any) => {
+    req.logout((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.json({ message: "Logged out successfully" });
     });
   });
 
@@ -137,8 +140,47 @@ export function setupLocalAuth(app: Express) {
     });
   });
 
+  // Auth0 callback route - create session from Auth0 tokens
+  app.post("/api/auth/auth0-callback", async (req: any, res: any) => {
+    try {
+      const { user } = req.body;
+      
+      if (!user || !user.email) {
+        return res.status(400).json({ message: "Invalid user data" });
+      }
+
+      // Check if user exists, create if not
+      const [existingUser] = await db.select().from(users).where(eq(users.email, user.email));
+      
+      let dbUser;
+      if (existingUser) {
+        dbUser = existingUser;
+      } else {
+        // Create new user from Auth0 data
+        const [newUser] = await db.insert(users).values({
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl,
+        }).returning();
+        dbUser = newUser;
+      }
+
+      // Log the user in via passport session
+      req.login(dbUser, (err: any) => {
+        if (err) {
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        res.json({ user: dbUser });
+      });
+    } catch (error) {
+      console.error("Auth0 callback error:", error);
+      res.status(500).json({ message: "Authentication failed" });
+    }
+  });
+
   // Get current user
-  app.get("/api/auth/user", (req: any, res) => {
+  app.get("/api/auth/user", (req: any, res: any) => {
     if (req.isAuthenticated()) {
       res.json(req.user);
     } else {
