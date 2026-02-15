@@ -118,17 +118,23 @@ export function setupLocalAuth(app: Express) {
     })(req, res, next);
   });
 
-  // Logout route
+  // Logout route (POST for API, GET for redirect)
   app.post("/api/auth/logout", (req: any, res) => {
     req.logout(() => {
       res.json({ success: true });
     });
   });
 
+  app.get("/api/logout", (req: any, res) => {
+    req.logout(() => {
+      res.redirect("/");
+    });
+  });
+
   // Get current user
-  app.get("/api/auth/me", (req: any, res) => {
+  app.get("/api/auth/user", (req: any, res) => {
     if (req.isAuthenticated()) {
-      res.json({ user: req.user });
+      res.json(req.user);
     } else {
       res.status(401).json({ message: "Not authenticated" });
     }
