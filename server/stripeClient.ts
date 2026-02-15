@@ -44,7 +44,10 @@ async function validateStripeKey(secretKey: string): Promise<boolean> {
     const stripe = new Stripe(secretKey, { apiVersion: '2025-11-17.clover' });
     await stripe.products.list({ limit: 1 });
     return true;
-  } catch {
+  } catch (err: any) {
+    console.error('Stripe key validation failed:', err.message);
+    console.error('Error type:', err.type);
+    console.error('Error code:', err.code);
     return false;
   }
 }
