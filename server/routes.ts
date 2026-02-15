@@ -149,9 +149,9 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  app.get(api.projects.list.path, async (req, res) => {
+  app.get(api.projects.list.path, optionalAuth, async (req, res) => {
     try {
-      const userId = (req as any).user?.claims?.sub || null;
+      const userId = (req as any).user?.claims?.sub || (req as any).user?.id || null;
       if (!userId) return res.json([]);
       const projectList = await storage.getProjects(userId);
       const projectsWithFiles = await Promise.all(
@@ -167,9 +167,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/projects/favorites", async (req, res) => {
+  app.get("/api/projects/favorites", optionalAuth, async (req, res) => {
     try {
-      const userId = (req as any).user?.claims?.sub || null;
+      const userId = (req as any).user?.claims?.sub || (req as any).user?.id || null;
       if (!userId) return res.json([]);
       const favs = await storage.getFavorites(userId);
       const favsWithFiles = await Promise.all(
@@ -185,10 +185,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/projects/default", async (req, res) => {
+  app.get("/api/projects/default", requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user?.claims?.sub || null;
-      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const userId = (req as any).user?.claims?.sub || (req as any).user?.id;
       const defaultProject = await storage.getDefaultProject(userId);
       const files = await storage.getProjectFiles(defaultProject.id);
       res.json({ ...defaultProject, files });
@@ -217,7 +216,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.projects.create.path, async (req, res) => {
+  app.post(api.projects.create.path, optionalAuth, async (req, res) => {
     try {
       const input = api.projects.create.input.parse(req.body);
       const userId = (req as any).user?.claims?.sub || null;
@@ -241,7 +240,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch(api.projects.update.path, async (req, res) => {
+  app.patch(api.projects.update.path, optionalAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
       const userId = (req as any).user?.claims?.sub || null;
@@ -271,7 +270,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.projects.delete.path, async (req, res) => {
+  app.delete(api.projects.delete.path, optionalAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
       const userId = (req as any).user?.claims?.sub || null;
@@ -318,7 +317,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/upload", (req: any, res: any, next: any) => {
+  app.post("/api/upload", uploadLimiter, optionalAuth, (req: any, res: any, next: any) => {
     upload.array("audio", 3)(req, res, (err: any) => {
       if (err) {
         if (err.code === 'LIMIT_FILE_SIZE') {
@@ -601,7 +600,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/contact", async (req, res) => {
+  app.post("/api/contact", contactLimiter, async (req, res) => {
     try {
       const { name, email, subject, message } = req.body;
       
