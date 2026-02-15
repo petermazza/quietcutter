@@ -143,19 +143,24 @@ export function setupLocalAuth(app: Express) {
   // Auth0 callback route - create session from Auth0 tokens
   app.post("/api/auth/auth0-callback", async (req: any, res: any) => {
     try {
+      console.log("Auth0 callback received:", req.body);
       const { user } = req.body;
       
       if (!user || !user.email) {
+        console.error("Invalid user data:", user);
         return res.status(400).json({ message: "Invalid user data" });
       }
 
+      console.log("Looking up user by email:", user.email);
       // Check if user exists, create if not
       const [existingUser] = await db.select().from(users).where(eq(users.email, user.email));
       
       let dbUser;
       if (existingUser) {
+        console.log("Found existing user:", existingUser.id);
         dbUser = existingUser;
       } else {
+        console.log("Creating new user from Auth0 data:", user);
         // Create new user from Auth0 data
         const [newUser] = await db.insert(users).values({
           email: user.email,
@@ -163,19 +168,24 @@ export function setupLocalAuth(app: Express) {
           lastName: user.lastName,
           profileImageUrl: user.profileImageUrl,
         }).returning();
+        console.log("Created new user:", newUser.id);
         dbUser = newUser;
       }
 
+      console.log("Logging in user via passport:", dbUser.id);
       // Log the user in via passport session
       req.login(dbUser, (err: any) => {
         if (err) {
-          return res.status(500).json({ message: "Failed to create session" });
+          console.error("Passport login error:", err);
+          return res.status(500).json({ message: "Failed to create session", error: err.message });
         }
+        console.log("Session created successfully for user:", dbUser.id);
         res.json({ user: dbUser });
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Auth0 callback error:", error);
-      res.status(500).json({ message: "Authentication failed" });
+      console.error("Error stack:", error.stack);
+      res.status(500).json({ message: "Authentication failed", error: error.message });
     }
   });
 
