@@ -43,9 +43,17 @@ export function setupLocalAuth(app: Express) {
             return done(null, false, { message: "Invalid email or password" });
           }
 
-          // Check if user has a password set (stored in metadata or separate lookup)
-          // For simplicity, we'll accept any password for demo, but you should implement proper storage
-          // In production, store passwords in a separate auth_passwords table
+          // Check if user has a password hash (local auth user)
+          if (!user.passwordHash) {
+            // User exists but has no password (OAuth user)
+            return done(null, false, { message: "Please sign in with Google or create a password" });
+          }
+          
+          // Verify password
+          const isValid = await verifyPassword(password, user.passwordHash);
+          if (!isValid) {
+            return done(null, false, { message: "Invalid email or password" });
+          }
           
           return done(null, user);
         } catch (err) {
@@ -85,6 +93,11 @@ export function setupLocalAuth(app: Express) {
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password required" });
       }
+      
+      // Validate password strength
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      }
 
       // Check if user exists
       const [existing] = await db.select().from(users).where(eq(users.email, email));
@@ -92,13 +105,17 @@ export function setupLocalAuth(app: Express) {
         return res.status(400).json({ message: "Email already registered" });
       }
 
-      // Create user (password should be stored properly in production)
-      const user = await authStorage.upsertUser({
+      // Hash password
+      const passwordHash = await hashPassword(password);
+
+      // Create user with hashed password
+      const [user] = await db.insert(users).values({
         email,
+        passwordHash,
         firstName: firstName || null,
         lastName: lastName || null,
         profileImageUrl: null,
-      });
+      }).returning();
 
       req.login(user, (err: any) => {
         if (err) {
@@ -155,7 +172,7 @@ export function setupLocalAuth(app: Express) {
   // Auth0 callback route - create session from Auth0 tokens
   app.post("/api/auth/auth0-callback", async (req: any, res: any) => {
     try {
-      console.log("Auth0 callback received:", req.body);
+      console.log("Auth0 callback received");
       const { user } = req.body;
       
       if (!user || !user.email) {

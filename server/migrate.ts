@@ -25,12 +25,18 @@ async function runMigrations() {
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
         email VARCHAR UNIQUE,
+        password_hash VARCHAR,
         first_name VARCHAR,
         last_name VARCHAR,
         profile_image_url VARCHAR,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
+    `);
+    
+    // Add password_hash column to existing users table if it doesn't exist
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR;
     `);
 
     await pool.query(`
