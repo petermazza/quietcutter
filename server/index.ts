@@ -22,6 +22,15 @@ async function initStripe() {
     return;
   }
 
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
+  
+  if (!stripeSecretKey || !stripePublishableKey) {
+    console.log('STRIPE_SECRET_KEY or STRIPE_PUBLISHABLE_KEY not set, skipping Stripe initialization');
+    console.log('Add these variables to enable Stripe payments');
+    return;
+  }
+
   try {
     console.log('Initializing Stripe schema...');
     await runMigrations({ databaseUrl });
