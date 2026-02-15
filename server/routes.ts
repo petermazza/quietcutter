@@ -601,17 +601,10 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/contact-messages", optionalAuth, async (req: any, res) => {
+  app.get("/api/admin/contact-messages", async (req: any, res) => {
+    console.log("[Admin] Contact messages endpoint hit");
+    
     try {
-      const userId = req.user?.claims?.sub || req.user?.id;
-      
-      console.log("[Admin] Contact messages request from user:", userId);
-      
-      // For now, allow anyone to view (you can add admin check later)
-      // if (!userId) {
-      //   return res.status(401).json({ message: "Authentication required" });
-      // }
-      
       const messages = await db
         .select()
         .from(contactMessages)
@@ -619,14 +612,14 @@ export async function registerRoutes(
       
       console.log(`[Admin] Found ${messages.length} contact messages`);
       
-      res.json({
+      return res.status(200).json({
         success: true,
         count: messages.length,
         messages: messages
       });
     } catch (err) {
-      console.error("Error fetching contact messages:", err);
-      res.status(500).json({ 
+      console.error("[Admin] Error fetching contact messages:", err);
+      return res.status(500).json({ 
         success: false,
         message: "Failed to fetch messages",
         error: err instanceof Error ? err.message : String(err)
