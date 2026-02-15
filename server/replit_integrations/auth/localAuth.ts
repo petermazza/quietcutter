@@ -118,6 +118,17 @@ export function setupLocalAuth(app: Express) {
     })(req, res, next);
   });
 
+  // Frontend redirect login (GET for compatibility)
+  app.get("/api/login", (req: any, res) => {
+    // If already logged in, redirect to home
+    if (req.isAuthenticated()) {
+      return res.redirect("/");
+    }
+    // Otherwise, return JSON indicating auth is required
+    // Frontend should handle showing login UI
+    res.status(401).json({ message: "Authentication required" });
+  });
+
   // Logout route (POST for API, GET for redirect)
   app.post("/api/auth/logout", (req: any, res) => {
     req.logout(() => {
