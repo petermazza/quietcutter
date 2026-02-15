@@ -601,6 +601,11 @@ export async function registerRoutes(
     }
   });
 
+  // Test endpoint to verify routing works
+  app.get("/api/admin/test", (req: any, res) => {
+    res.json({ success: true, message: "Admin routing works!" });
+  });
+
   app.get("/api/admin/contact-messages", async (req: any, res) => {
     console.log("[Admin] Contact messages endpoint hit");
     
