@@ -52,6 +52,7 @@ async function validateStripeKey(secretKey: string): Promise<boolean> {
 async function getCredentials() {
   if (cachedCredentials) return cachedCredentials;
 
+  console.log('Loading Stripe credentials...');
   const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
   const candidates: { source: string; publishableKey: string; secretKey: string }[] = [];
 
@@ -70,18 +71,29 @@ async function getCredentials() {
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
   const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
+  
+  console.log('Environment variables check:', {
+    hasSecretKey: !!secretKey,
+    hasPublishableKey: !!publishableKey,
+    secretKeyPrefix: secretKey?.substring(0, 7),
+    publishableKeyPrefix: publishableKey?.substring(0, 7),
+  });
+  
   if (secretKey && publishableKey) {
     candidates.push({ source: 'env-secrets', publishableKey, secretKey });
   }
 
+  console.log(`Found ${candidates.length} Stripe credential candidate(s)`);
+
   for (const candidate of candidates) {
+    console.log(`Validating Stripe key from: ${candidate.source}`);
     const isValid = await validateStripeKey(candidate.secretKey);
     if (isValid) {
-      console.log(`Using Stripe credentials from: ${candidate.source}`);
+      console.log(`✓ Using Stripe credentials from: ${candidate.source}`);
       cachedCredentials = { publishableKey: candidate.publishableKey, secretKey: candidate.secretKey };
       return cachedCredentials;
     } else {
-      console.log(`Stripe key from ${candidate.source} is invalid, trying next...`);
+      console.log(`✗ Stripe key from ${candidate.source} is invalid, trying next...`);
     }
   }
 
