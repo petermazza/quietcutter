@@ -43,13 +43,16 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       return;
     }
     const redirectUri = `${window.location.origin}/auth/callback`;
+    const state = Math.random().toString(36).substring(7);
+    const nonce = Math.random().toString(36).substring(7);
     const authUrl = `https://${auth0Domain}/authorize?` + new URLSearchParams({
       response_type: "token id_token",
       client_id: auth0ClientId,
       redirect_uri: redirectUri,
       audience: `https://${auth0Domain}/api/v2/`,
       scope: "openid profile email",
-      state: Math.random().toString(36).substring(7),
+      state: state,
+      nonce: nonce,
     }).toString();
     window.location.href = authUrl;
   }
@@ -57,6 +60,8 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   function handleAuth0Signup() {
     if (!isAuth0Enabled) return;
     const redirectUri = `${window.location.origin}/auth/callback`;
+    const state = Math.random().toString(36).substring(7);
+    const nonce = Math.random().toString(36).substring(7);
     const authUrl = `https://${auth0Domain}/authorize?` + new URLSearchParams({
       response_type: "token id_token",
       client_id: auth0ClientId,
@@ -64,7 +69,8 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       audience: `https://${auth0Domain}/api/v2/`,
       scope: "openid profile email",
       screen_hint: "signup",
-      state: Math.random().toString(36).substring(7),
+      state: state,
+      nonce: nonce,
     }).toString();
     window.location.href = authUrl;
   }
