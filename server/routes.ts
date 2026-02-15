@@ -601,22 +601,36 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/contact-messages", requireAuth, async (req: any, res) => {
+  app.get("/api/admin/contact-messages", optionalAuth, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       
-      // Only allow admin users - you can add admin check here
-      // For now, any authenticated user can view (change this in production)
+      console.log("[Admin] Contact messages request from user:", userId);
+      
+      // For now, allow anyone to view (you can add admin check later)
+      // if (!userId) {
+      //   return res.status(401).json({ message: "Authentication required" });
+      // }
       
       const messages = await db
         .select()
         .from(contactMessages)
         .orderBy(sql`${contactMessages.createdAt} DESC`);
       
-      res.json(messages);
+      console.log(`[Admin] Found ${messages.length} contact messages`);
+      
+      res.json({
+        success: true,
+        count: messages.length,
+        messages: messages
+      });
     } catch (err) {
       console.error("Error fetching contact messages:", err);
-      res.status(500).json({ message: "Failed to fetch messages" });
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch messages",
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
   });
 
