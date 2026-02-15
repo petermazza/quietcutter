@@ -147,6 +147,42 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  // Register admin routes FIRST before anything else
+  console.log("[ROUTES] Registering admin routes...");
+  
+  app.get("/api/admin/test", (req: any, res) => {
+    console.log("[ADMIN TEST] Endpoint hit!");
+    res.json({ success: true, message: "Admin routing works!" });
+  });
+
+  app.get("/api/admin/contact-messages", async (req: any, res) => {
+    console.log("[ADMIN] Contact messages endpoint hit");
+    
+    try {
+      const messages = await db
+        .select()
+        .from(contactMessages)
+        .orderBy(sql`${contactMessages.createdAt} DESC`);
+      
+      console.log(`[ADMIN] Found ${messages.length} contact messages`);
+      
+      return res.status(200).json({
+        success: true,
+        count: messages.length,
+        messages: messages
+      });
+    } catch (err) {
+      console.error("[ADMIN] Error fetching contact messages:", err);
+      return res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch messages",
+        error: err instanceof Error ? err.message : String(err)
+      });
+    }
+  });
+  
+  console.log("[ROUTES] Admin routes registered");
+  
   await setupAuth(app);
   registerAuthRoutes(app);
 
@@ -598,37 +634,6 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error reprocessing project:", err);
       res.status(500).json({ message: "Failed to reprocess project files" });
-    }
-  });
-
-  // Test endpoint to verify routing works
-  app.get("/api/admin/test", (req: any, res) => {
-    res.json({ success: true, message: "Admin routing works!" });
-  });
-
-  app.get("/api/admin/contact-messages", async (req: any, res) => {
-    console.log("[Admin] Contact messages endpoint hit");
-    
-    try {
-      const messages = await db
-        .select()
-        .from(contactMessages)
-        .orderBy(sql`${contactMessages.createdAt} DESC`);
-      
-      console.log(`[Admin] Found ${messages.length} contact messages`);
-      
-      return res.status(200).json({
-        success: true,
-        count: messages.length,
-        messages: messages
-      });
-    } catch (err) {
-      console.error("[Admin] Error fetching contact messages:", err);
-      return res.status(500).json({ 
-        success: false,
-        message: "Failed to fetch messages",
-        error: err instanceof Error ? err.message : String(err)
-      });
     }
   });
 
