@@ -62,17 +62,6 @@ async function checkIsPro(userId: string | null): Promise<boolean> {
   }
 }
 
-const processingQueue: Array<{
-  fileId: number;
-  inputPath: string;
-  threshold: number;
-  minDuration: number;
-  isVideo: boolean;
-  outputFormat: string;
-  isPro: boolean;
-}> = [];
-let isProcessing = false;
-
 interface QueueItem {
   fileId: number;
   inputPath: string;
@@ -589,11 +578,19 @@ export async function registerRoutes(
 
         const isVideo = file.fileType === "video";
 
-app.post("/api/projects/:id/reprocess", async (req: any, res) => {
-try {
-const id = parseInt(req.params.id as string, 10);
-const userId = req.user?.claims?.sub || null;
-if (!userId) return res.status(401).json({ message: "Not authenticated" });
+        enqueueProcessing({
+          fileId: file.id,
+          inputPath: file.originalFilePath!,
+          threshold: project.silenceThreshold,
+          minDuration: project.minSilenceDuration,
+          isVideo,
+          outputFormat: resolvedFormat,
+          isPro,
+          timestamp: Date.now(),
+        });
+      }
+
+      res.json({ message: "Reprocessing started", fileCount: filesToReprocess.length });
     } catch (err) {
       console.error("Error reprocessing project:", err);
       res.status(500).json({ message: "Failed to reprocess project files" });
