@@ -6,6 +6,8 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { requireAuth, optionalAuth } from "./middleware/auth";
+import { uploadLimiter, authLimiter, contactLimiter, apiLimiter } from "./middleware/rateLimiter";
 import multer from "multer";
 import path from "path";
 import { promises as fs } from 'fs';
