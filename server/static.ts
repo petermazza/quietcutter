@@ -19,9 +19,12 @@ export function serveStatic(app: Express) {
   // fall through to index.html if the file doesn't exist
   // BUT don't intercept /api routes
   app.use((req, res, next) => {
+    console.log(`[STATIC] Request for: ${req.path}`);
     if (req.path.startsWith('/api')) {
+      console.log(`[STATIC] Passing through /api route: ${req.path}`);
       return next();
     }
+    console.log(`[STATIC] Serving index.html for: ${req.path}`);
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
