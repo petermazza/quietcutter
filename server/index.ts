@@ -218,10 +218,14 @@ app.use((req, res, next) => {
   try {
     console.log('Starting server initialization...');
     
-    // Run database migrations first
-    console.log('Running database migrations...');
-    await runDbMigrations();
-    console.log('Database migrations completed');
+    // Run database migrations first (skip if no DATABASE_URL)
+    if (process.env.DATABASE_URL) {
+      console.log('Running database migrations...');
+      await runDbMigrations();
+      console.log('Database migrations completed');
+    } else {
+      console.log('DATABASE_URL not set, skipping database migrations. Frontend-only mode.');
+    }
     
     await initStripe();
     console.log('Stripe initialized');
@@ -229,8 +233,12 @@ app.use((req, res, next) => {
     await registerRoutes(httpServer, app);
     console.log('Routes registered');
 
-    // File cleanup cron job - runs daily
+    // File cleanup cron job - runs daily (only when database is available)
     const startFileCleanup = async () => {
+      if (!process.env.DATABASE_URL) {
+        console.log('DATABASE_URL not set, skipping file cleanup cron job');
+        return;
+      }
       const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
       
       const cleanupOldFiles = async () => {
