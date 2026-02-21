@@ -1,3 +1,4 @@
+console.log("[v0] Server starting with updated code - lazy db initialization");
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
