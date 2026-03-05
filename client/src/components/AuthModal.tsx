@@ -192,7 +192,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               <div className="space-y-2">
                 <Button type="button" variant="outline" className="w-full" onClick={handleAuth0Login}>
                   <Mail className="mr-2 h-4 w-4" />
-                  Continue with Auth0 (Google, Apple, GitHub)
+                  Continue with Google
                 </Button>
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
