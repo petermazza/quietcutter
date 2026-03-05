@@ -107,6 +107,21 @@ async function runMigrations() {
       );
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR NOT NULL,
+        stripe_customer_id TEXT NOT NULL,
+        stripe_subscription_id TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'active',
+        price_id TEXT,
+        current_period_end TIMESTAMP,
+        cancel_at_period_end BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
     console.log('Database migrations completed successfully');
   } catch (error) {
     console.error('Migration error:', error);

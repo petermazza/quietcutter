@@ -4,9 +4,9 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { sql } from "drizzle-orm";
-import { contactMessages } from "@shared/schema";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { sql, eq } from "drizzle-orm";
+import { contactMessages, subscriptions } from "@shared/schema";
+import { setupAuth, registerAuthRoutes } from "./auth";
 import { requireAuth, optionalAuth } from "./middleware/auth";
 import { uploadLimiter, authLimiter, contactLimiter, apiLimiter } from "./middleware/rateLimiter";
 import multer from "multer";
@@ -14,7 +14,7 @@ import path from "path";
 import { promises as fs } from 'fs';
 import fsSync from 'fs';
 import { stripeService } from "./stripeService";
-import { getStripePublishableKey, getUncachableStripeClient, getStripeSync } from "./stripeClient";
+import { getStripePublishableKey, getUncachableStripeClient } from "./stripeClient";
 import { getUncachableResendClient } from "./resendClient";
 
 const uploadDir = path.join(process.cwd(), "uploads");
@@ -54,14 +54,12 @@ const FREE_PROJECT_LIMIT = 1;
 async function checkIsPro(userId: string | null): Promise<boolean> {
   if (!userId) return false;
   try {
-    const result = await db.execute(
-      sql`SELECT s.status FROM stripe.subscriptions s
-          JOIN stripe.customers c ON s.customer = c.id
-          WHERE c.metadata->>'userId' = ${userId}
-          AND s.status = 'active'
-          LIMIT 1`
-    );
-    return (result.rows?.length ?? 0) > 0;
+    const result = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, userId))
+      .limit(1);
+    return result.length > 0 && result[0].status === 'active';
   } catch {
     return false;
   }
@@ -174,7 +172,7 @@ export async function registerRoutes(
 
   app.get(api.projects.list.path, optionalAuth, async (req: any, res) => {
     try {
-      const userId = (req as any).user?.claims?.sub || (req as any).user?.id || null;
+      const userId = (req as any).user?.id || null;
       if (!userId) return res.json([]);
       const projectList = await storage.getProjects(userId);
       const projectsWithFiles = await Promise.all(
@@ -192,7 +190,7 @@ export async function registerRoutes(
 
   app.get("/api/projects/favorites", optionalAuth, async (req, res) => {
     try {
-      const userId = (req as any).user?.claims?.sub || (req as any).user?.id || null;
+      const userId = (req as any).user?.id || null;
       if (!userId) return res.json([]);
       const favs = await storage.getFavorites(userId);
       const favsWithFiles = await Promise.all(
@@ -210,7 +208,7 @@ export async function registerRoutes(
 
   app.get("/api/projects/default", requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user?.claims?.sub || (req as any).user?.id;
+      const userId = (req as any).user?.id;
       const defaultProject = await storage.getDefaultProject(userId);
       const files = await storage.getProjectFiles(defaultProject.id);
       res.json({ ...defaultProject, files });
@@ -223,7 +221,7 @@ export async function registerRoutes(
   app.get(api.projects.get.path, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const userId = (req as any).user?.claims?.sub || null;
+      const userId = (req as any).user?.id || null;
       const project = await storage.getProject(id);
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
@@ -242,7 +240,7 @@ export async function registerRoutes(
   app.post(api.projects.create.path, optionalAuth, async (req, res) => {
     try {
       const input = api.projects.create.input.parse(req.body);
-      const userId = (req as any).user?.claims?.sub || null;
+      const userId = (req as any).user?.id || null;
       const project = await storage.createProject({
         name: input.name,
         userId,
@@ -266,7 +264,7 @@ export async function registerRoutes(
   app.patch(api.projects.update.path, optionalAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const userId = (req as any).user?.claims?.sub || null;
+      const userId = (req as any).user?.id || null;
       const existingProject = await storage.getProject(id);
       if (!existingProject) {
         return res.status(404).json({ message: "Project not found" });
@@ -296,7 +294,7 @@ export async function registerRoutes(
   app.delete(api.projects.delete.path, optionalAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const userId = (req as any).user?.claims?.sub || null;
+      const userId = (req as any).user?.id || null;
       
       const project = await storage.getProject(id);
       if (!project) {
@@ -331,7 +329,7 @@ export async function registerRoutes(
 
   app.get("/api/subscription/status", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub || null;
+      const userId = req.user?.id || null;
       const isPro = await checkIsPro(userId);
       res.json({ isPro });
     } catch (err) {
@@ -357,7 +355,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "No file was uploaded. Please select an audio or video file to upload." });
       }
 
-      const userId = req.user?.claims?.sub || null;
+      const userId = req.user?.id || null;
       const isPro = await checkIsPro(userId);
 
       const fileSizeLimit = isPro ? PRO_FILE_SIZE_LIMIT : FREE_FILE_SIZE_LIMIT;
@@ -481,7 +479,7 @@ export async function registerRoutes(
   app.get("/api/files/:id/download", async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const userId = (req as any).user?.claims?.sub || null;
+      const userId = (req as any).user?.id || null;
       const file = await storage.getProjectFile(id);
       
       if (!file) {
@@ -509,7 +507,7 @@ export async function registerRoutes(
   app.delete("/api/files/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const userId = (req as any).user?.claims?.sub || null;
+      const userId = (req as any).user?.id || null;
       const file = await storage.getProjectFile(id);
       
       if (!file) {
@@ -543,7 +541,7 @@ export async function registerRoutes(
   app.patch("/api/projects/:id/favorite", async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const userId = (req as any).user?.claims?.sub || null;
+      const userId = (req as any).user?.id || null;
       const { isFavorite } = req.body;
       
       const existingProject = await storage.getProject(id);
@@ -567,7 +565,7 @@ export async function registerRoutes(
   app.post("/api/projects/:id/reprocess", async (req: any, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const userId = req.user?.claims?.sub || null;
+      const userId = req.user?.id || null;
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
       const project = await storage.getProject(id);
@@ -663,7 +661,7 @@ export async function registerRoutes(
 
   app.get("/api/presets", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: "Sign in to view presets" });
       }
@@ -677,7 +675,7 @@ export async function registerRoutes(
 
   app.post("/api/presets", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: "Sign in to save presets" });
       }
@@ -707,7 +705,7 @@ export async function registerRoutes(
 
   app.delete("/api/presets/:id", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: "Sign in required" });
       }
@@ -731,7 +729,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "No files selected" });
       }
 
-      const userId = req.user?.claims?.sub || req.user?.id || null;
+      const userId = req.user?.id || null;
       const files = [];
 
       for (const id of fileIds) {
@@ -773,7 +771,7 @@ export async function registerRoutes(
 
   app.get("/api/projects/bulk-download", async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: "Sign in required" });
       }
@@ -816,7 +814,7 @@ export async function registerRoutes(
   app.get("/api/files/:id/preview", async (req: any, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const userId = req.user?.claims?.sub || null;
+      const userId = req.user?.id || null;
       const file = await storage.getProjectFile(id);
 
       if (!file) {
@@ -880,77 +878,7 @@ export async function registerRoutes(
   app.get("/api/stripe/products", async (req, res) => {
     try {
       const products = await stripeService.listProductsWithPrices();
-      
-      const productsMap = new Map();
-      for (const row of products as any[]) {
-        if (!productsMap.has(row.product_id)) {
-          productsMap.set(row.product_id, {
-            id: row.product_id,
-            name: row.product_name,
-            description: row.product_description,
-            active: row.product_active,
-            metadata: row.product_metadata,
-            prices: []
-          });
-        }
-        if (row.price_id) {
-          productsMap.get(row.product_id).prices.push({
-            id: row.price_id,
-            unit_amount: row.unit_amount,
-            currency: row.currency,
-            recurring: row.recurring,
-            active: row.price_active,
-          });
-        }
-      }
-
-      if (productsMap.size > 0) {
-        return res.json({ data: Array.from(productsMap.values()) });
-      }
-
-      console.log("No products in database, fetching from Stripe API directly...");
-      const stripe = await getUncachableStripeClient();
-      const stripeProducts = await stripe.products.list({ active: true });
-      let quietCutterPro = stripeProducts.data.find(p => p.name === 'QuietCutter Pro');
-
-      if (!quietCutterPro) {
-        console.log("Creating QuietCutter Pro product in Stripe...");
-        quietCutterPro = await stripe.products.create({
-          name: 'QuietCutter Pro',
-          description: 'Unlimited audio processing, priority support, and advanced features',
-          metadata: { tier: 'pro' }
-        });
-        await stripe.prices.create({
-          product: quietCutterPro.id,
-          unit_amount: 999,
-          currency: 'usd',
-          recurring: { interval: 'month' },
-        });
-        await stripe.prices.create({
-          product: quietCutterPro.id,
-          unit_amount: 7999,
-          currency: 'usd',
-          recurring: { interval: 'year' },
-        });
-      }
-
-      const prices = await stripe.prices.list({ product: quietCutterPro.id, active: true });
-      const result = {
-        id: quietCutterPro.id,
-        name: quietCutterPro.name,
-        description: quietCutterPro.description,
-        active: quietCutterPro.active,
-        metadata: quietCutterPro.metadata,
-        prices: prices.data.map(p => ({
-          id: p.id,
-          unit_amount: p.unit_amount,
-          currency: p.currency,
-          recurring: p.recurring,
-          active: p.active,
-        })),
-      };
-
-      res.json({ data: [result] });
+      res.json({ data: products });
     } catch (err) {
       console.error("Error fetching stripe products:", err);
       res.status(500).json({ message: "Failed to fetch products" });
@@ -964,25 +892,24 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Price ID is required" });
       }
 
-      const userId = req.user?.claims?.sub || null;
+      const userId = req.user?.id || null;
+      if (!userId) {
+        return res.status(401).json({ message: "Sign in required to subscribe" });
+      }
+
+      const stripe = await getUncachableStripeClient();
       let customerId: string;
-      
-      if (userId) {
-        const existingResult = await db.execute(
-          sql`SELECT id FROM stripe.customers WHERE metadata->>'userId' = ${userId} LIMIT 1`
-        );
-        if (existingResult.rows?.length > 0) {
-          customerId = existingResult.rows[0].id as string;
-        } else {
-          const email = req.user?.claims?.email || `${userId}@quietcutter.app`;
-          const customer = await stripeService.createCustomer(email, userId);
-          customerId = customer.id;
-        }
+
+      // Find existing Stripe customer for this user
+      const customers = await stripe.customers.list({ limit: 1, email: req.user?.email });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
       } else {
-        const customer = await stripeService.createCustomer("guest@quietcutter.com", "guest");
+        const email = req.user?.email || `${userId}@quietcutter.app`;
+        const customer = await stripeService.createCustomer(email, userId);
         customerId = customer.id;
       }
-      
+
       const protocol = req.headers['x-forwarded-proto'] || 'https';
       const host = req.headers['host'] || req.hostname;
       const baseUrl = `${protocol}://${host}`;
@@ -990,7 +917,8 @@ export async function registerRoutes(
         customerId,
         priceId,
         `${baseUrl}/?success=true`,
-        `${baseUrl}/?canceled=true`
+        `${baseUrl}/?canceled=true`,
+        userId
       );
 
       res.json({ url: session.url });

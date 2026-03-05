@@ -1,4 +1,4 @@
-import { getUncachableStripeClient, getStripeSync } from '../server/stripeClient';
+import { getUncachableStripeClient } from '../server/stripeClient';
 
 async function createProducts() {
   try {
@@ -45,11 +45,7 @@ async function createProducts() {
       console.log('Created yearly price:', yearlyPrice.id, '($79.99/year)');
     }
     
-    console.log('\nSyncing Stripe data to local database...');
-    const stripeSync = await getStripeSync();
-    await stripeSync.syncBackfill();
-    console.log('Sync complete!');
-    
+    console.log('Done!');
     process.exit(0);
   } catch (error) {
     console.error('Error creating products:', error);

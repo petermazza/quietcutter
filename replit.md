@@ -2,7 +2,7 @@
 
 ## Overview
 
-QuietCutter is a fully functional audio/video silence removal application with a dark navy UI. Users can sign in with Replit Auth (Google, GitHub, email), upload audio files (MP3, WAV, OGG, FLAC, M4A) or video files (MP4, MOV, AVI, MKV, WEBM), select quick presets or customize silence detection settings, and download processed files. The app includes multi-file project management with favorites, contact form, blog pages, and Stripe Pro subscription.
+QuietCutter is a fully functional audio/video silence removal application with a dark navy UI. Users can sign in with email/password or Auth0 (Google), upload audio files (MP3, WAV, OGG, FLAC, M4A) or video files (MP4, MOV, AVI, MKV, WEBM), select quick presets or customize silence detection settings, and download processed files. The app includes multi-file project management with favorites, contact form, blog pages, and Stripe Pro subscription.
 
 ## User Preferences
 
@@ -14,7 +14,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 
 ## Key Features
 
-1. **Authentication**: Replit Auth for sign-in/sign-up (Google, GitHub, email)
+1. **Authentication**: Email/password login + Auth0 OAuth (Google)
 2. **File Upload**: Audio and video file upload with multer (max 100MB free / 500MB Pro)
 3. **Audio Processing**: FFmpeg silence removal with configurable threshold and duration
 4. **Video Processing**: FFmpeg extracts audio from video files, processes silence removal, outputs processed audio
@@ -64,23 +64,23 @@ QuietCutter is a fully functional audio/video silence removal application with a
 ### Backend Architecture
 - **Framework**: Express 5 with TypeScript
 - **Runtime**: Node.js with tsx for TypeScript execution
-- **Authentication**: Replit Auth with session management
+- **Authentication**: Passport.js local strategy + Auth0 OAuth callback, sessions via connect-pg-simple
 - **File Upload**: Multer for audio/video file handling
 - **Audio Processing**: FFmpeg for silence removal with output format support
 - **Video Processing**: FFmpeg extracts audio from video before silence removal
 - **Priority Queue**: Pro files processed before free user files
-- **Payments**: Stripe integration with stripe-replit-sync
+- **Payments**: Stripe integration with direct webhook handling
 - **Bulk Download**: archiver for ZIP downloads
 - **Database ORM**: Drizzle ORM with PostgreSQL dialect
 
 ### Database Schema
-- **users**: User accounts (from Replit Auth)
-- **sessions**: Auth session management
+- **users**: User accounts with email/password or OAuth
+- **sessions**: Auth session management (connect-pg-simple)
 - **projects**: Named containers with userId, name, isFavorite, silenceThreshold, minSilenceDuration, outputFormat, createdAt
 - **project_files**: Individual files within projects with originalFileName, filePath, processedFilePath, status, settings, durations, fileType, fileSizeBytes
 - **custom_presets**: User-saved presets with threshold and duration settings (Pro only)
 - **contact_messages**: Contact form submissions
-- **stripe.*** : Stripe-managed schema for products, prices, customers, subscriptions
+- **subscriptions**: Stripe subscription tracking with userId, stripeCustomerId, stripeSubscriptionId, status, currentPeriodEnd
 
 ### API Endpoints
 - `GET /api/projects` - List user's projects (with nested files array)
@@ -103,6 +103,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - `POST /api/contact` - Submit contact form
 - `GET /api/stripe/products` - List Stripe products
 - `POST /api/stripe/checkout` - Create Stripe checkout session
+- `POST /api/stripe/webhook` - Stripe webhook endpoint
 
 ### Audio/Video Processing Pipeline
 1. User uploads audio/video file(s) via `/api/upload`
@@ -121,15 +122,16 @@ QuietCutter is a fully functional audio/video silence removal application with a
 14. User can download or preview via API
 
 ### Subscription Check
-- Pro status determined by querying `stripe.subscriptions` joined with `stripe.customers` via `metadata->>'userId'`
+- Pro status determined by querying `subscriptions` table where `userId` matches and `status = 'active'`
 - Active subscription status required for Pro features
 - Shared `checkIsPro()` helper used across all Pro-gated endpoints
 
 ## External Dependencies
 
 ### Integrations
-- **Replit Auth**: User authentication (sign-in with Google, GitHub, email)
+- **Auth0**: OAuth authentication (Google sign-in)
 - **Stripe**: Payment processing for Pro subscriptions
+- **Resend**: Transactional email for contact form
 - **FFmpeg**: Audio/video processing for silence removal
 
 ### Database
@@ -152,6 +154,22 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - Screen Recording: -40dB threshold, 400ms duration (Pro)
 - Interview: -38dB threshold, 450ms duration (Pro)
 
+## Environment Variables
+
+### Required
+- `DATABASE_URL` - PostgreSQL connection string
+- `STRIPE_SECRET_KEY` - Stripe secret API key
+- `STRIPE_PUBLISHABLE_KEY` - Stripe publishable API key
+- `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
+
+### Optional
+- `SESSION_SECRET` - Session encryption secret (defaults to fallback)
+- `RESEND_API_KEY` - Resend API key for contact form emails
+- `RESEND_FROM_EMAIL` - Sender email address
+- `VITE_AUTH0_DOMAIN` - Auth0 domain for OAuth
+- `VITE_AUTH0_CLIENT_ID` - Auth0 client ID for OAuth
+- `RAILWAY_PUBLIC_DOMAIN` - Auto-set by Railway for domain detection
+
 ## Development
 
 ### Commands
@@ -161,9 +179,11 @@ QuietCutter is a fully functional audio/video silence removal application with a
 
 ### File Structure
 - `client/src/pages/` - React page components
+- `server/auth/` - Authentication setup, routes, and storage
 - `server/routes.ts` - Express API routes
 - `server/storage.ts` - Database operations
 - `server/stripeClient.ts` - Stripe client setup
 - `server/stripeService.ts` - Stripe service operations
-- `shared/schema.ts` - Database schema definitions (projects + projectFiles tables)
+- `server/webhookHandlers.ts` - Stripe webhook event processing
+- `shared/schema.ts` - Database schema definitions
 - `shared/routes.ts` - API route definitions and response types
