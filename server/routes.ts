@@ -6,6 +6,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { sql, eq } from "drizzle-orm";
 import { contactMessages, subscriptions } from "@shared/schema";
+import { users } from "@shared/models/auth";
 import { setupAuth, registerAuthRoutes } from "./auth";
 import { requireAuth, optionalAuth } from "./middleware/auth";
 import { uploadLimiter, authLimiter, contactLimiter, apiLimiter } from "./middleware/rateLimiter";
@@ -54,6 +55,18 @@ const FREE_PROJECT_LIMIT = 1;
 async function checkIsPro(userId: string | null): Promise<boolean> {
   if (!userId) return false;
   try {
+    // First check if user is admin
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    
+    if (user?.isAdmin) {
+      return true; // Admin users always have pro access
+    }
+    
+    // Check for active subscription for regular users
     const result = await db
       .select()
       .from(subscriptions)

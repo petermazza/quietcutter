@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { Loader2, Mail, Lock, User } from "lucide-react";
+import { Loader2, Mail, Lock, User, Crown } from "lucide-react";
 
 interface AuthModalProps {
   open: boolean;
@@ -83,6 +83,43 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       nonce: nonce,
     }).toString();
     window.location.href = authUrl;
+  }
+
+  async function handleAdminLogin() {
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Admin login failed");
+      }
+
+      const data = await response.json();
+      
+      // Invalidate auth query to refresh user state
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
+      toast({
+        title: "Admin Access Granted!",
+        description: "You are now signed in as admin with all pro features.",
+      });
+
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({
+        title: "Admin login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -228,6 +265,31 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                 )}
               </Button>
             </form>
+            
+            {/* Admin Login Button */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Admin Access</span>
+              </div>
+            </div>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full border-yellow-200 bg-yellow-50 hover:bg-yellow-100 hover:border-yellow-300" 
+              onClick={handleAdminLogin}
+              disabled={isLoading}
+            >
+              <Crown className="mr-2 h-4 w-4 text-yellow-600" />
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in as Admin...
+                </>
+              ) : (
+                "Login as Admin"
+              )}
+            </Button>
           </TabsContent>
 
           <TabsContent value="register" className="space-y-4">

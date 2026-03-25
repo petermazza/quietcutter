@@ -29,6 +29,7 @@ async function runMigrations() {
         first_name VARCHAR,
         last_name VARCHAR,
         profile_image_url VARCHAR,
+        is_admin BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
@@ -37,6 +38,11 @@ async function runMigrations() {
     // Add password_hash column to existing users table if it doesn't exist
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR;
+    `);
+
+    // Add is_admin column to existing users table if it doesn't exist
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
     `);
 
     await pool.query(`

@@ -109,6 +109,37 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // Admin login (no authentication required)
+  app.post("/api/auth/admin-login", async (req: any, res: any) => {
+    try {
+      // Create fallback admin user that always works
+      const admin = {
+        id: "admin-fallback-id",
+        email: "admin@quietcutter.dev",
+        firstName: "Admin",
+        lastName: "User",
+        isAdmin: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      console.log("Admin login requested - creating admin session");
+      
+      // Create session for admin user
+      req.login(admin, (err: any) => {
+        if (err) {
+          console.error("Failed to create admin session:", err);
+          return res.status(500).json({ message: "Failed to create admin session" });
+        }
+        console.log("Admin session created successfully");
+        return res.json({ success: true, user: admin });
+      });
+    } catch (error: any) {
+      console.error("Admin login error:", error);
+      res.status(500).json({ message: "Admin login failed" });
+    }
+  });
+
   // Logout (POST for API)
   app.post("/api/auth/logout", (req: any, res: any) => {
     req.logout((err: any) => {

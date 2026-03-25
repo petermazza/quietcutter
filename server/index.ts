@@ -6,6 +6,7 @@ import { createServer } from "http";
 import { getUncachableStripeClient } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 import { runMigrations } from './migrate';
+import { ensureAdminUser } from './db';
 import { logger } from './lib/logger';
 import { validateAuth0Config } from './lib/auth0-validation';
 
@@ -199,8 +200,17 @@ app.use((req, res, next) => {
       logger.info('Running database migrations');
       await runMigrations();
       logger.info('Database migrations completed');
+      
+      // Ensure admin user exists after migrations
+      await ensureAdminUser();
     } else {
       logger.info('Skipping database migrations in development');
+      // Still try to ensure admin user exists in development
+      try {
+        await ensureAdminUser();
+      } catch (error) {
+        logger.warn('Could not create admin user in development', 'server', {}, error as Error);
+      }
     }
     
     await initStripe();
@@ -288,9 +298,9 @@ app.use((req, res, next) => {
     logger.info('Starting HTTP server', 'server', { port });
     
     httpServer.listen(
-      { port, host: "0.0.0.0", reusePort: true },
+      { port, host: process.env.HOST || "localhost" },
       () => {
-      logger.info('Server started', 'server', { port, host: "0.0.0.0" });
+      logger.info('Server started', 'server', { port, host: process.env.HOST || "localhost" });
       },
     );
   } catch (err: any) {
