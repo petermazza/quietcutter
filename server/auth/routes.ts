@@ -17,6 +17,9 @@ export function registerAuthRoutes(app: Express): void {
 
   // Email/password login
   app.post("/api/auth/login", (req: any, res: any, next: any) => {
+    if (typeof req.body?.email !== "string" || typeof req.body?.password !== "string") {
+      return res.status(400).json({ message: "Email and password required" });
+    }
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
         return next(err);
@@ -38,8 +41,12 @@ export function registerAuthRoutes(app: Express): void {
     try {
       const { email, password, firstName, lastName } = req.body;
 
-      if (!email || !password) {
+      if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
         return res.status(400).json({ message: "Email and password required" });
+      }
+
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        return res.status(400).json({ message: "Please provide a valid email address" });
       }
 
       if (password.length < 8) {
@@ -75,6 +82,12 @@ export function registerAuthRoutes(app: Express): void {
 
   // Auth0 callback — creates session from Auth0 tokens
   app.post("/api/auth/auth0-callback", async (req: any, res: any) => {
+    // This endpoint trusts the caller's user claims, so it must only exist
+    // when Auth0 is actually configured; otherwise anyone could mint a
+    // session as any email address.
+    if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_CLIENT_ID) {
+      return res.status(503).json({ message: "Auth0 is not configured" });
+    }
     try {
       const { user } = req.body;
 

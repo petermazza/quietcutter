@@ -57,7 +57,7 @@ export function createRateLimiter(options: {
 // Preset rate limiters
 export const uploadLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 uploads per 15 min
+  max: parseInt(process.env.UPLOAD_RATE_LIMIT ?? "10", 10), // 10 uploads per 15 min
   message: 'Too many uploads. Please wait before uploading more files.',
 });
 

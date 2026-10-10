@@ -520,6 +520,7 @@ export async function registerRoutes(
   app.get("/api/files/:id/download", async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      if (isNaN(id)) return res.status(404).json({ message: "File not found" });
       const userId = (req as any).user?.id || null;
       const file = await storage.getProjectFile(id);
       
@@ -548,6 +549,7 @@ export async function registerRoutes(
   app.delete("/api/files/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      if (isNaN(id)) return res.status(404).json({ message: "File not found" });
       const userId = (req as any).user?.id || null;
       const file = await storage.getProjectFile(id);
       
@@ -751,6 +753,7 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Sign in required" });
       }
       const id = parseInt(req.params.id as string, 10);
+      if (isNaN(id)) return res.status(404).json({ message: "Preset not found" });
       const deleted = await storage.deleteCustomPreset(id, userId);
       if (!deleted) {
         return res.status(404).json({ message: "Preset not found" });
@@ -774,7 +777,9 @@ export async function registerRoutes(
       const files = [];
 
       for (const id of fileIds) {
-        const file = await storage.getProjectFile(parseInt(id, 10));
+        const fileId = parseInt(id, 10);
+        if (isNaN(fileId)) continue;
+        const file = await storage.getProjectFile(fileId);
         if (file && file.status === "completed" && file.processedFilePath) {
           const project = await storage.getProject(file.projectId);
           if (!project?.userId || project.userId === userId) {
@@ -855,6 +860,7 @@ export async function registerRoutes(
   app.get("/api/files/:id/preview", async (req: any, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      if (isNaN(id)) return res.status(404).json({ message: "File not found" });
       const userId = req.user?.id || null;
       const file = await storage.getProjectFile(id);
 
@@ -884,20 +890,26 @@ export async function registerRoutes(
         flac: "audio/flac",
       };
 
-      res.setHeader("Content-Type", mimeTypes[ext] || "audio/mpeg");
-      res.setHeader("Content-Length", stat.size);
-      res.setHeader("Accept-Ranges", "bytes");
-
       const range = req.headers.range;
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
         const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+        const end = parts[1] ? Math.min(parseInt(parts[1], 10), stat.size - 1) : stat.size - 1;
+        if (isNaN(start) || isNaN(end) || start < 0 || start >= stat.size || end < start) {
+          res.setHeader("Accept-Ranges", "bytes");
+          res.setHeader("Content-Range", `bytes */${stat.size}`);
+          return res.status(416).end();
+        }
+        res.setHeader("Content-Type", mimeTypes[ext] || "audio/mpeg");
+        res.setHeader("Accept-Ranges", "bytes");
         res.status(206);
         res.setHeader("Content-Range", `bytes ${start}-${end}/${stat.size}`);
         res.setHeader("Content-Length", end - start + 1);
         fsSync.createReadStream(file.processedFilePath, { start, end }).pipe(res);
       } else {
+        res.setHeader("Content-Type", mimeTypes[ext] || "audio/mpeg");
+        res.setHeader("Content-Length", stat.size);
+        res.setHeader("Accept-Ranges", "bytes");
         fsSync.createReadStream(file.processedFilePath).pipe(res);
       }
     } catch (err) {

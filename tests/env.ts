@@ -18,6 +18,9 @@ export function testServerEnv(): NodeJS.ProcessEnv {
     NODE_ENV: "development",
     DATABASE_URL: TEST_DATABASE_URL,
     SESSION_SECRET: "quietcutter-test-session-secret",
+    // Raised so the suite's real uploads don't trip the limiter; the flood
+    // test pushes past this deliberately to prove throttling still works.
+    UPLOAD_RATE_LIMIT: "200",
     PORT: String(TEST_PORT),
     HOST: "127.0.0.1",
   };
