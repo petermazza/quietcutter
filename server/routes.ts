@@ -231,9 +231,10 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.projects.get.path, async (req, res) => {
+  app.get(api.projects.get.path, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      if (isNaN(id)) return next();
       const userId = (req as any).user?.id || null;
       const project = await storage.getProject(id);
       if (!project) {
@@ -254,6 +255,31 @@ export async function registerRoutes(
     try {
       const input = api.projects.create.input.parse(req.body);
       const userId = (req as any).user?.id || null;
+
+      const isPro = await checkIsPro(userId);
+      if (!isPro && userId) {
+        const projectCount = await storage.getProjectCount(userId);
+        if (projectCount >= FREE_PROJECT_LIMIT) {
+          const oldest = await storage.getOldestProject(userId);
+          if (oldest) {
+            const oldFiles = await storage.getProjectFiles(oldest.id);
+            for (const f of oldFiles) {
+              if (f.originalFilePath) {
+                try { await fs.unlink(f.originalFilePath); } catch (err) {
+                  console.error('Failed to delete old project original file:', f.originalFilePath, err);
+                }
+              }
+              if (f.processedFilePath) {
+                try { await fs.unlink(f.processedFilePath); } catch (err) {
+                  console.error('Failed to delete old project processed file:', f.processedFilePath, err);
+                }
+              }
+            }
+            await storage.deleteProject(oldest.id);
+          }
+        }
+      }
+
       const project = await storage.createProject({
         name: input.name,
         userId,
@@ -277,6 +303,7 @@ export async function registerRoutes(
   app.patch(api.projects.update.path, optionalAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid project id" });
       const userId = (req as any).user?.id || null;
       const existingProject = await storage.getProject(id);
       if (!existingProject) {
@@ -307,6 +334,7 @@ export async function registerRoutes(
   app.delete(api.projects.delete.path, optionalAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid project id" });
       const userId = (req as any).user?.id || null;
       
       const project = await storage.getProject(id);
@@ -504,7 +532,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Access denied" });
       }
       
-      if (!file.processedFilePath || !fs.existsSync(file.processedFilePath)) {
+      if (!file.processedFilePath || !fsSync.existsSync(file.processedFilePath)) {
         return res.status(404).json({ message: "Processed file not found" });
       }
       
@@ -587,7 +615,7 @@ export async function registerRoutes(
 
       const isPro = await checkIsPro(userId);
       const files = await storage.getProjectFiles(id);
-      const filesToReprocess = files.filter(f => f.originalFilePath && fs.existsSync(f.originalFilePath));
+      const filesToReprocess = files.filter(f => f.originalFilePath && fsSync.existsSync(f.originalFilePath));
 
       if (filesToReprocess.length === 0) {
         return res.status(400).json({ message: "No files available to reprocess" });
@@ -796,7 +824,7 @@ export async function registerRoutes(
 
       const allFiles = await storage.getAllUserFiles(userId);
       const completedFiles = allFiles.filter(
-        f => f.status === "completed" && f.processedFilePath && fs.existsSync(f.processedFilePath)
+        f => f.status === "completed" && f.processedFilePath && fsSync.existsSync(f.processedFilePath)
       );
 
       if (completedFiles.length === 0) {
@@ -844,11 +872,11 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Audio preview is a Pro feature." });
       }
 
-      if (!file.processedFilePath || !fs.existsSync(file.processedFilePath)) {
+      if (!file.processedFilePath || !fsSync.existsSync(file.processedFilePath)) {
         return res.status(404).json({ message: "Processed file not found" });
       }
 
-      const stat = fs.statSync(file.processedFilePath);
+      const stat = fsSync.statSync(file.processedFilePath);
       const ext = file.outputFormat || "mp3";
       const mimeTypes: Record<string, string> = {
         mp3: "audio/mpeg",
@@ -868,9 +896,9 @@ export async function registerRoutes(
         res.status(206);
         res.setHeader("Content-Range", `bytes ${start}-${end}/${stat.size}`);
         res.setHeader("Content-Length", end - start + 1);
-        fs.createReadStream(file.processedFilePath, { start, end }).pipe(res);
+        fsSync.createReadStream(file.processedFilePath, { start, end }).pipe(res);
       } else {
-        fs.createReadStream(file.processedFilePath).pipe(res);
+        fsSync.createReadStream(file.processedFilePath).pipe(res);
       }
     } catch (err) {
       console.error("Error streaming preview:", err);
@@ -958,8 +986,8 @@ async function getAudioDuration(filePath: string): Promise<number | null> {
 }
 
 function spawnFFmpeg(args: string[], totalDuration: number | null, fileId: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const { spawn } = require("child_process");
+  return new Promise(async (resolve, reject) => {
+    const { spawn } = await import("child_process");
     const proc = spawn("ffmpeg", args);
     let lastProgressUpdate = 0;
 

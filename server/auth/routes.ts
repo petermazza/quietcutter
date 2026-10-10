@@ -112,8 +112,14 @@ export function registerAuthRoutes(app: Express): void {
   // Admin login (no authentication required)
   app.post("/api/auth/admin-login", async (req: any, res: any) => {
     try {
-      // Create fallback admin user that always works
-      const admin = {
+      // Prefer the real admin row so isAdmin checks (e.g. Pro gating) work
+      const [dbAdmin] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, "admin@quietcutter.dev"))
+        .limit(1);
+
+      const admin = dbAdmin || {
         id: "admin-fallback-id",
         email: "admin@quietcutter.dev",
         firstName: "Admin",

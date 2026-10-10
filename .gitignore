@@ -8,3 +8,6 @@ vite.config.ts.*
 .env.*
 .envrc
 qc.env
+test-results/
+playwright-report/
+uploads/*
