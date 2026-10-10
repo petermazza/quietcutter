@@ -298,9 +298,9 @@ app.use((req, res, next) => {
     logger.info('Starting HTTP server', 'server', { port });
     
     httpServer.listen(
-      { port, host: process.env.HOST || "localhost" },
+      { port, host: process.env.HOST || "0.0.0.0" },
       () => {
-      logger.info('Server started', 'server', { port, host: process.env.HOST || "localhost" });
+      logger.info('Server started', 'server', { port, host: process.env.HOST || "0.0.0.0" });
       },
     );
   } catch (err: any) {
