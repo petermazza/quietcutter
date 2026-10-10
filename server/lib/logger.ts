@@ -84,8 +84,8 @@ class Logger {
     this.log(LogLevel.ERROR, message, source, metadata, error);
   }
 
-  warn(message: string, source?: string, metadata?: Record<string, any>): void {
-    this.log(LogLevel.WARN, message, source, metadata);
+  warn(message: string, source?: string, metadata?: Record<string, any>, error?: Error): void {
+    this.log(LogLevel.WARN, message, source, metadata, error);
   }
 
   info(message: string, source?: string, metadata?: Record<string, any>): void {

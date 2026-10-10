@@ -4,6 +4,13 @@ import { db } from './db';
 import { subscriptions } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
+// In the current Stripe API, the billing period end lives on the
+// subscription's items rather than on the subscription itself.
+function subscriptionPeriodEnd(sub: Stripe.Subscription): Date | null {
+  const periodEnd = sub.items.data[0]?.current_period_end;
+  return periodEnd ? new Date(periodEnd * 1000) : null;
+}
+
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
     if (!Buffer.isBuffer(payload)) {
@@ -42,14 +49,14 @@ export class WebhookHandlers {
               stripeSubscriptionId: sub.id,
               status: sub.status,
               priceId: sub.items.data[0]?.price?.id || null,
-              currentPeriodEnd: new Date(sub.current_period_end * 1000),
+              currentPeriodEnd: subscriptionPeriodEnd(sub),
               cancelAtPeriodEnd: sub.cancel_at_period_end,
             }).onConflictDoUpdate({
               target: subscriptions.stripeSubscriptionId,
               set: {
                 status: sub.status,
                 priceId: sub.items.data[0]?.price?.id || null,
-                currentPeriodEnd: new Date(sub.current_period_end * 1000),
+                currentPeriodEnd: subscriptionPeriodEnd(sub),
                 cancelAtPeriodEnd: sub.cancel_at_period_end,
                 updatedAt: new Date(),
               },
@@ -68,7 +75,7 @@ export class WebhookHandlers {
           .set({
             status: sub.status,
             priceId: sub.items.data[0]?.price?.id || null,
-            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            currentPeriodEnd: subscriptionPeriodEnd(sub),
             cancelAtPeriodEnd: sub.cancel_at_period_end,
             updatedAt: new Date(),
           })

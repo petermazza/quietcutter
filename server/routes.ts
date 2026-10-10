@@ -500,7 +500,7 @@ export async function registerRoutes(
           inputPath: file.path,
           threshold: parseInt(silenceThreshold) || -40,
           minDuration: parseInt(minSilenceDuration) || 1,
-          isVideo: file.fileType === "video",
+          isVideo,
           outputFormat: resolvedFormat,
           isPro: isPro,
           timestamp: Date.now()

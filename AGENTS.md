@@ -18,6 +18,7 @@ Audio/video silence-removal app. See `replit.md` for full architecture notes.
 - Test DB: `createdb -p 5433 quietcutter_test` + `DATABASE_URL=postgresql://<user>@localhost:5433/quietcutter_test npm run db:push`. Override location with `TEST_DATABASE_URL`.
 - The server rate-limits uploads to 10 per 15 min per IP — the suite stays under that, so keep the total upload count in mind when adding tests. The limiter is in-memory and resets when the test server restarts.
 
-## Known issues
+## Verification
 
-- `npm run check` (tsc) has pre-existing errors unrelated to tests: missing `express-oauth2-jwt-bearer` package (auth0.ts), a multer `fileType` type error, `current_period_end` Stripe typing in webhookHandlers, and a call-arity error in index.ts.
+- `npm run check` (tsc) — clean.
+- `npm test` / `npm run test:e2e` — all green.
