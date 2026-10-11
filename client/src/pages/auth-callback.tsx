@@ -15,8 +15,23 @@ export default function AuthCallback() {
     
     const accessToken = params.get("access_token");
     const idToken = params.get("id_token");
+    const returnedState = params.get("state");
     const error = params.get("error");
     const errorDescription = params.get("error_description");
+
+    // The state must match the one we stored before redirecting — otherwise
+    // this response belongs to a different (possibly forged) login attempt.
+    const expectedState = sessionStorage.getItem("auth0_state");
+    const nonce = sessionStorage.getItem("auth0_nonce");
+    sessionStorage.removeItem("auth0_state");
+    sessionStorage.removeItem("auth0_nonce");
+
+    if (!error && (!returnedState || !expectedState || returnedState !== expectedState || !nonce)) {
+      console.error("Auth0 callback state mismatch — refusing login");
+      alert("Sign-in could not be verified. Please try again.");
+      setLocation("/");
+      return;
+    }
 
     console.log("Parsed tokens:", { 
       hasAccessToken: !!accessToken, 
@@ -32,26 +47,13 @@ export default function AuthCallback() {
       return;
     }
 
-    if (accessToken && idToken) {
+    if (accessToken && idToken && nonce) {
       // Store tokens in localStorage
       localStorage.setItem("auth0_access_token", accessToken);
       localStorage.setItem("auth0_id_token", idToken);
 
-      // Decode ID token to get user info (basic JWT decode)
+      // The server verifies the ID token itself — we only pass it through.
       try {
-        const payload = JSON.parse(atob(idToken.split('.')[1]));
-        console.log("Auth0 user payload:", payload);
-        
-        const userData = {
-          email: payload.email,
-          firstName: payload.given_name || payload.name?.split(' ')[0] || null,
-          lastName: payload.family_name || payload.name?.split(' ').slice(1).join(' ') || null,
-          profileImageUrl: payload.picture || null,
-        };
-        
-        console.log("Sending user data to backend:", userData);
-        
-        // Send tokens to backend to create session
         fetch("/api/auth/auth0-callback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -59,7 +61,7 @@ export default function AuthCallback() {
           body: JSON.stringify({
             accessToken,
             idToken,
-            user: userData,
+            nonce,
           }),
         })
           .then(async res => {

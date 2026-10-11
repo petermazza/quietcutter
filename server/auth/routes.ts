@@ -4,6 +4,7 @@ import { db } from "../db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "./setup";
+import { verifyAuth0IdToken } from "./auth0";
 
 export function registerAuthRoutes(app: Express): void {
   // Get current authenticated user
@@ -80,32 +81,50 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  // Auth0 callback — creates session from Auth0 tokens
+  // Auth0 callback — creates a session only from a verified Auth0 ID token.
   app.post("/api/auth/auth0-callback", async (req: any, res: any) => {
-    // This endpoint trusts the caller's user claims, so it must only exist
-    // when Auth0 is actually configured; otherwise anyone could mint a
-    // session as any email address.
     if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_CLIENT_ID) {
       return res.status(503).json({ message: "Auth0 is not configured" });
     }
+    const { idToken, nonce } = req.body ?? {};
+    if (typeof idToken !== "string" || !idToken ||
+        typeof nonce !== "string" || !nonce) {
+      return res.status(401).json({ message: "Auth0 token required" });
+    }
+
+    let claims;
     try {
-      const { user } = req.body;
+      claims = await verifyAuth0IdToken(idToken, nonce);
+    } catch {
+      return res.status(401).json({ message: "Invalid Auth0 token" });
+    }
 
-      if (!user || !user.email) {
-        return res.status(400).json({ message: "Invalid user data" });
-      }
+    const email = typeof claims.email === "string" ? claims.email : null;
+    if (!email) {
+      return res.status(400).json({ message: "Auth0 token has no email" });
+    }
+    // Reject unverified emails when Auth0 reports them — otherwise an
+    // unverified signup could take over an existing account with that email.
+    if (claims.email_verified === false) {
+      return res.status(403).json({ message: "Email address is not verified" });
+    }
 
-      const [existingUser] = await db.select().from(users).where(eq(users.email, user.email));
+    try {
+      const [existingUser] = await db.select().from(users).where(eq(users.email, email));
 
       let dbUser;
       if (existingUser) {
         dbUser = existingUser;
       } else {
+        const name = typeof claims.name === "string" ? claims.name.split(" ") : [];
+        const given = typeof claims.given_name === "string" ? claims.given_name : null;
+        const family = typeof claims.family_name === "string" ? claims.family_name : null;
+        const picture = typeof claims.picture === "string" ? claims.picture : null;
         const [newUser] = await db.insert(users).values({
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          profileImageUrl: user.profileImageUrl,
+          email,
+          firstName: given || name[0] || null,
+          lastName: family || name.slice(1).join(" ") || null,
+          profileImageUrl: picture,
         }).returning();
         dbUser = newUser;
       }

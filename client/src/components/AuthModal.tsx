@@ -55,6 +55,8 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     const redirectUri = `${window.location.origin}/auth/callback`;
     const state = Math.random().toString(36).substring(7);
     const nonce = Math.random().toString(36).substring(7);
+    sessionStorage.setItem("auth0_state", state);
+    sessionStorage.setItem("auth0_nonce", nonce);
     const authUrl = `https://${auth0Domain}/authorize?` + new URLSearchParams({
       response_type: "token id_token",
       client_id: auth0ClientId,
@@ -72,6 +74,8 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     const redirectUri = `${window.location.origin}/auth/callback`;
     const state = Math.random().toString(36).substring(7);
     const nonce = Math.random().toString(36).substring(7);
+    sessionStorage.setItem("auth0_state", state);
+    sessionStorage.setItem("auth0_nonce", nonce);
     const authUrl = `https://${auth0Domain}/authorize?` + new URLSearchParams({
       response_type: "token id_token",
       client_id: auth0ClientId,
