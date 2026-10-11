@@ -1,9 +1,14 @@
 import { spawn, type ChildProcess } from "child_process";
+import fs from "fs";
+import http from "http";
 import path from "path";
 import pg from "pg";
+import { exportJWK, generateKeyPair } from "jose";
 import { BASE_URL, PROJECT_ROOT, TEST_DATABASE_URL, testServerEnv } from "./env";
+import { AUTH0_KEY_FILE } from "./helpers/auth0";
 
 let server: ChildProcess | undefined;
+let jwksServer: http.Server | undefined;
 let serverOutput = "";
 
 const READY_TIMEOUT_MS = 90_000;
@@ -36,12 +41,38 @@ async function waitForServer(): Promise<void> {
   );
 }
 
+// Stands in for Auth0's public key directory: generates a throwaway keypair,
+// serves the public half over HTTP, and leaves the private half where tests
+// can sign tokens with it.
+async function startJwksStandIn(): Promise<string> {
+  const { publicKey, privateKey } = await generateKeyPair("RS256", {
+    extractable: true,
+  });
+  const publicJwk = await exportJWK(publicKey);
+  publicJwk.kid = "qc-test-key";
+  const privateJwk = await exportJWK(privateKey);
+  privateJwk.kid = "qc-test-key";
+  fs.writeFileSync(AUTH0_KEY_FILE, JSON.stringify(privateJwk));
+
+  jwksServer = http.createServer((_req, res) => {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ keys: [publicJwk] }));
+  });
+  await new Promise<void>((resolve) => {
+    jwksServer!.listen(0, "127.0.0.1", resolve);
+  });
+  const port = (jwksServer.address() as { port: number }).port;
+  return `http://127.0.0.1:${port}/.well-known/jwks.json`;
+}
+
 export async function setup() {
   await resetTestDatabase();
 
+  const jwksUrl = await startJwksStandIn();
+
   server = spawn("npx", ["tsx", "server/index.ts"], {
     cwd: PROJECT_ROOT,
-    env: testServerEnv(),
+    env: testServerEnv(jwksUrl),
     stdio: ["ignore", "pipe", "pipe"],
   });
 
@@ -52,6 +83,14 @@ export async function setup() {
 }
 
 export async function teardown() {
+  if (jwksServer) {
+    await new Promise<void>((resolve) => jwksServer!.close(() => resolve()));
+  }
+  try {
+    fs.unlinkSync(AUTH0_KEY_FILE);
+  } catch {
+    // key file already gone
+  }
   if (server && !server.killed) {
     server.kill("SIGTERM");
     await new Promise<void>((resolve) => {

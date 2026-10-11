@@ -2,15 +2,17 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 
 // The JWKS endpoint is fetched lazily and cached; jose refetches when a
 // token arrives signed by a key id it hasn't seen (normal Auth0 rotation).
-let cachedDomain: string | undefined;
+// AUTH0_JWKS_URL overrides the endpoint for the test suite, which serves a
+// local key set instead of hitting the real Auth0.
+let cachedUrl: string | undefined;
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 
 function getJwks(domain: string) {
-  if (!jwks || cachedDomain !== domain) {
-    cachedDomain = domain;
-    jwks = createRemoteJWKSet(
-      new URL(`https://${domain}/.well-known/jwks.json`)
-    );
+  const url =
+    process.env.AUTH0_JWKS_URL || `https://${domain}/.well-known/jwks.json`;
+  if (!jwks || cachedUrl !== url) {
+    cachedUrl = url;
+    jwks = createRemoteJWKSet(new URL(url));
   }
   return jwks;
 }
