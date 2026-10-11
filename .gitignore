@@ -11,3 +11,5 @@ qc.env
 test-results/
 playwright-report/
 uploads/*
+# Editor workspace files
+*.code-workspace
