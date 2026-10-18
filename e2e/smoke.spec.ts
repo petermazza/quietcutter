@@ -20,3 +20,14 @@ test("visitors can sign in with a one-time email code", async ({ page }) => {
   await page.getByTestId("button-user-menu").click();
   await expect(page.getByTestId("text-user-name")).toHaveText(email);
 });
+
+// Every public page's Sign in button must open the code-entry box, not
+// bounce the visitor elsewhere — this is the regression this guards.
+for (const path of ["/about", "/blog", "/blog/1", "/contact"]) {
+  test(`sign-in button on ${path} opens the sign-in box`, async ({ page }) => {
+    await page.goto(path);
+
+    await page.getByTestId("button-sign-in").click();
+    await expect(page.getByTestId("input-otp-email")).toBeVisible();
+  });
+}

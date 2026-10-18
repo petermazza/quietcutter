@@ -40,3 +40,14 @@ export async function insertContactMessage(subject: string): Promise<void> {
     )
   );
 }
+
+// Backdates a sign-in code's expiry so a test can verify the 10-minute
+// lifetime without actually waiting.
+export async function expireOtp(email: string): Promise<void> {
+  await withClient((client) =>
+    client.query(
+      `UPDATE otp_codes SET expires_at = NOW() - INTERVAL '1 minute' WHERE email = $1`,
+      [email.trim().toLowerCase()]
+    )
+  );
+}

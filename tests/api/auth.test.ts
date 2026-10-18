@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TestClient, uniqueEmail, readCapturedOtp } from "../helpers/http";
+import { expireOtp } from "../helpers/db";
 
 describe("authentication", () => {
   it("rejects /api/auth/user when not signed in", async () => {
@@ -70,6 +71,19 @@ describe("authentication", () => {
     const res = await again.verifyOtp(email, code);
     expect(res.status).toBe(401);
     expect((await again.get("/api/auth/user")).status).toBe(401);
+  });
+
+  it("rejects a code past its 10-minute expiry", async () => {
+    const client = new TestClient();
+    const email = uniqueEmail("expired");
+    await client.requestOtp(email);
+    const code = readCapturedOtp(email);
+
+    await expireOtp(email);
+
+    const res = await client.verifyOtp(email, code);
+    expect(res.status).toBe(401);
+    expect((await client.get("/api/auth/user")).status).toBe(401);
   });
 
   it("invalidates an older code when a new one is sent", async () => {
