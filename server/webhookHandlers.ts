@@ -28,6 +28,9 @@ export class WebhookHandlers {
 
     if (webhookSecret) {
       event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } else if (process.env.NODE_ENV === 'production') {
+      // Never trust an unverified payment notice on the live site.
+      throw new Error('STRIPE_WEBHOOK_SECRET must be set in production');
     } else {
       // If no webhook secret, parse the event directly (less secure, for development)
       console.warn('STRIPE_WEBHOOK_SECRET not set — skipping signature verification');

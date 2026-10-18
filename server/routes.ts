@@ -52,6 +52,12 @@ const FREE_FILE_SIZE_LIMIT = 100 * 1024 * 1024;
 const PRO_FILE_SIZE_LIMIT = 500 * 1024 * 1024;
 const FREE_PROJECT_LIMIT = 1;
 
+function escapeHtml(str: string): string {
+  return str.replace(/[&<>"']/g, (ch) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!
+  );
+}
+
 async function checkIsPro(userId: string | null): Promise<boolean> {
   if (!userId) return false;
   try {
@@ -158,13 +164,20 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  app.get("/api/admin/contact-messages", async (req: any, res) => {
+  await setupAuth(app);
+  registerAuthRoutes(app);
+
+  // Contact submissions contain customer emails — admins only.
+  app.get("/api/admin/contact-messages", requireAuth, async (req: any, res) => {
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
     try {
       const messages = await db
         .select()
         .from(contactMessages)
         .orderBy(sql`${contactMessages.createdAt} DESC`);
-      
+
       return res.status(200).json({
         success: true,
         count: messages.length,
@@ -172,16 +185,13 @@ export async function registerRoutes(
       });
     } catch (err) {
       console.error("Error fetching contact messages:", err);
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
         message: "Failed to fetch messages",
         error: err instanceof Error ? err.message : String(err)
       });
     }
   });
-
-  await setupAuth(app);
-  registerAuthRoutes(app);
 
   app.get(api.projects.list.path, optionalAuth, async (req: any, res) => {
     try {
@@ -499,7 +509,7 @@ export async function registerRoutes(
           fileId: projectFile.id,
           inputPath: file.path,
           threshold: parseInt(silenceThreshold) || -40,
-          minDuration: parseInt(minSilenceDuration) || 1,
+          minDuration: parseInt(minSilenceDuration) || 500,
           isVideo,
           outputFormat: resolvedFormat,
           isPro: isPro,
@@ -680,15 +690,15 @@ export async function registerRoutes(
           from: fromEmail || "QuietCutter <noreply@quietcutter.com>",
           to: "support@quietcutter.com",
           replyTo: email,
-          subject: `[QuietCutter Contact] ${subject}`,
+          subject: `[QuietCutter Contact] ${escapeHtml(subject)}`,
           html: `
             <h2>New Contact Form Message</h2>
-            <p><strong>From:</strong> ${name} (${email})</p>
-            <p><strong>Subject:</strong> ${subject}</p>
+            <p><strong>From:</strong> ${escapeHtml(name)} (${escapeHtml(email)})</p>
+            <p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
             <hr />
-            <p>${message.replace(/\n/g, "<br />")}</p>
+            <p>${escapeHtml(message).replace(/\n/g, "<br />")}</p>
             <hr />
-            <p style="color: #888; font-size: 12px;">Reply directly to this email to respond to ${name}.</p>
+            <p style="color: #888; font-size: 12px;">Reply directly to this email to respond to ${escapeHtml(name)}.</p>
           `,
         });
       } catch (emailErr) {

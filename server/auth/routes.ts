@@ -215,8 +215,11 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  // Admin login (no authentication required)
+  // Admin login (no authentication required) — dev and test only.
   app.post("/api/auth/admin-login", async (req: any, res: any) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({ message: "Admin login is disabled in production" });
+    }
     try {
       // Prefer the real admin row so isAdmin checks (e.g. Pro gating) work
       const [dbAdmin] = await db

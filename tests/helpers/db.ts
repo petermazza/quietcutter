@@ -29,3 +29,14 @@ export async function getContactMessageCount(): Promise<number> {
     return res.rows[0].c;
   });
 }
+
+// Inserts a contact message directly so tests don't spend the 3-per-hour
+// /api/contact rate limit (or attempt a Resend send) just to have a row.
+export async function insertContactMessage(subject: string): Promise<void> {
+  await withClient((client) =>
+    client.query(
+      `INSERT INTO contact_messages (name, email, subject, message) VALUES ($1, $2, $3, $4)`,
+      ["Test User", "test@example.com", subject, "test message body"]
+    )
+  );
+}

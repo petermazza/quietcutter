@@ -270,30 +270,34 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                 </Button>
               </form>
 
-              {/* Admin Login Button */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Admin Access</span>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-yellow-200 bg-yellow-50 hover:bg-yellow-100 hover:border-yellow-300"
-                onClick={handleAdminLogin}
-                disabled={isLoading}
-              >
-                <Crown className="mr-2 h-4 w-4 text-yellow-600" />
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in as Admin...
-                  </>
-                ) : (
-                  "Login as Admin"
-                )}
-              </Button>
+              {/* Admin Login Button — dev and test only, never shipped to production */}
+              {!import.meta.env.PROD && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">Admin Access</span>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-yellow-200 bg-yellow-50 hover:bg-yellow-100 hover:border-yellow-300"
+                    onClick={handleAdminLogin}
+                    disabled={isLoading}
+                  >
+                    <Crown className="mr-2 h-4 w-4 text-yellow-600" />
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in as Admin...
+                      </>
+                    ) : (
+                      "Login as Admin"
+                    )}
+                  </Button>
+                </>
+              )}
             </div>
           </>
         ) : (

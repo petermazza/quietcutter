@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { TestClient, uniqueEmail, waitForFileStatus, readCapturedOtp } from "../helpers/http";
 import { formWithFile, makeAudioWithSilence, tmpFile } from "../helpers/media";
-import { makeUserPro } from "../helpers/db";
+import { makeUserPro, insertContactMessage } from "../helpers/db";
 import { PROJECT_ROOT } from "../env";
 
 describe("adversarial: authentication", () => {
@@ -70,6 +70,23 @@ describe("adversarial: authentication", () => {
       code: "123456' OR '1'='1",
     });
     expect(injection.status).toBe(400);
+  });
+  it("hides customer contact messages from anyone but an admin", async () => {
+    const subject = `private-${Date.now()}`;
+    await insertContactMessage(subject);
+
+    const anon = new TestClient();
+    expect((await anon.get("/api/admin/contact-messages")).status).toBe(401);
+
+    const regular = new TestClient();
+    await regular.register(uniqueEmail("regular"));
+    expect((await regular.get("/api/admin/contact-messages")).status).toBe(403);
+
+    const admin = new TestClient();
+    await admin.post("/api/auth/admin-login", {});
+    const res = await admin.get("/api/admin/contact-messages");
+    expect(res.status).toBe(200);
+    expect(res.body.messages.some((m: any) => m.subject === subject)).toBe(true);
   });
 });
 
