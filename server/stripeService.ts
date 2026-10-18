@@ -22,14 +22,6 @@ export class StripeService {
     });
   }
 
-  async createCustomerPortalSession(customerId: string, returnUrl: string) {
-    const stripe = await getUncachableStripeClient();
-    return await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: returnUrl,
-    });
-  }
-
   async listProductsWithPrices(active = true) {
     const stripe = await getUncachableStripeClient();
     const products = await stripe.products.list({ active, limit: 20 });

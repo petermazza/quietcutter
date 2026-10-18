@@ -45,18 +45,3 @@ export function validateAuth0Config() {
     domain: auth0Domain 
   };
 }
-
-export function getClientAuth0Config() {
-  const domain = process.env.AUTH0_DOMAIN;
-  const clientId = process.env.AUTH0_CLIENT_ID;
-  
-  if (!domain || !clientId) {
-    return null;
-  }
-  
-  return {
-    domain,
-    clientId,
-    audience: `https://${domain}/api/v2/`
-  };
-}

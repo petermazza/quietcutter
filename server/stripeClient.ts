@@ -34,7 +34,3 @@ export async function getStripePublishableKey(): Promise<string> {
   }
   return cachedPublishableKey;
 }
-
-export async function getStripeSecretKey(): Promise<string> {
-  return getSecretKey();
-}

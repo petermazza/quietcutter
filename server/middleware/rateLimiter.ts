@@ -78,9 +78,3 @@ export const contactLimiter = createRateLimiter({
   max: 3, // 3 messages per hour
   message: 'Too many contact form submissions. Please try again later.',
 });
-
-export const apiLimiter = createRateLimiter({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute
-  message: 'Too many requests. Please slow down.',
-});
