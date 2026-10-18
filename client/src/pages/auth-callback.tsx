@@ -48,10 +48,6 @@ export default function AuthCallback() {
     }
 
     if (accessToken && idToken && nonce) {
-      // Store tokens in localStorage
-      localStorage.setItem("auth0_access_token", accessToken);
-      localStorage.setItem("auth0_id_token", idToken);
-
       // The server verifies the ID token itself — we only pass it through.
       try {
         fetch("/api/auth/auth0-callback", {

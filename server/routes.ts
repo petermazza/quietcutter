@@ -198,13 +198,7 @@ export async function registerRoutes(
       const userId = (req as any).user?.id || null;
       if (!userId) return res.json([]);
       const projectList = await storage.getProjects(userId);
-      const projectsWithFiles = await Promise.all(
-        projectList.map(async (project) => {
-          const files = await storage.getProjectFiles(project.id);
-          return { ...project, files };
-        })
-      );
-      res.json(projectsWithFiles);
+      res.json(await storage.attachFilesToProjects(projectList));
     } catch (err) {
       console.error("Error fetching projects:", err);
       res.status(500).json({ message: "Failed to fetch projects" });
@@ -216,13 +210,7 @@ export async function registerRoutes(
       const userId = (req as any).user?.id || null;
       if (!userId) return res.json([]);
       const favs = await storage.getFavorites(userId);
-      const favsWithFiles = await Promise.all(
-        favs.map(async (project) => {
-          const files = await storage.getProjectFiles(project.id);
-          return { ...project, files };
-        })
-      );
-      res.json(favsWithFiles);
+      res.json(await storage.attachFilesToProjects(favs));
     } catch (err) {
       console.error("Error fetching favorites:", err);
       res.status(500).json({ message: "Failed to fetch favorites" });

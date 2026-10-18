@@ -256,6 +256,12 @@ app.use((req, res, next) => {
                 // File may already be deleted
               }
             }
+            // Clear the stored paths so this row is never scanned again.
+            await db.execute(sql`
+              UPDATE project_files
+              SET processed_file_path = NULL, original_file_path = NULL
+              WHERE id = ${file.id}
+            `);
           }
           
           if (deletedCount > 0) {

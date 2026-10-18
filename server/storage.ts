@@ -12,10 +12,11 @@ import {
   type InsertContactMessage,
   type ContactMessage,
 } from "@shared/schema";
-import { eq, and, desc, asc, count } from "drizzle-orm";
+import { eq, and, desc, asc, count, inArray } from "drizzle-orm";
 
 export interface IStorage {
   getProjects(userId?: string | null): Promise<Project[]>;
+  attachFilesToProjects(projectList: Project[]): Promise<(Project & { files: ProjectFile[] })[]>;
   getProject(id: number): Promise<Project | undefined>;
   getProjectCount(userId: string): Promise<number>;
   getOldestProject(userId: string): Promise<Project | undefined>;
@@ -56,6 +57,19 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(projects.createdAt));
     }
     return await db.select().from(projects).orderBy(desc(projects.createdAt));
+  }
+
+  async attachFilesToProjects(projectList: Project[]): Promise<(Project & { files: ProjectFile[] })[]> {
+    if (projectList.length === 0) return [];
+    const files = await db.select().from(projectFiles)
+      .where(inArray(projectFiles.projectId, projectList.map(p => p.id)))
+      .orderBy(desc(projectFiles.createdAt));
+    const byProject = new Map<number, ProjectFile[]>();
+    for (const f of files) {
+      const list = byProject.get(f.projectId);
+      if (list) list.push(f); else byProject.set(f.projectId, [f]);
+    }
+    return projectList.map(p => ({ ...p, files: byProject.get(p.id) ?? [] }));
   }
 
   async getProject(id: number): Promise<Project | undefined> {
@@ -186,14 +200,8 @@ export class DatabaseStorage implements IStorage {
     const userProjects = await db.select({ id: projects.id }).from(projects)
       .where(eq(projects.userId, userId));
     if (userProjects.length === 0) return [];
-    const projectIds = userProjects.map(p => p.id);
-    const allFiles: ProjectFile[] = [];
-    for (const pid of projectIds) {
-      const files = await db.select().from(projectFiles)
-        .where(eq(projectFiles.projectId, pid));
-      allFiles.push(...files);
-    }
-    return allFiles;
+    return await db.select().from(projectFiles)
+      .where(inArray(projectFiles.projectId, userProjects.map(p => p.id)));
   }
 
   async getCustomPresets(userId: string): Promise<CustomPreset[]> {

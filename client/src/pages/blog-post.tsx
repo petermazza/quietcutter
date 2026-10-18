@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { ArrowLeft, Calendar, Clock, User, Menu, X, LogOut } from "lucide-react";
 import { SiInstagram } from "react-icons/si";
 import { useAuth } from "@/hooks/use-auth";
+import { AuthModal } from "@/components/AuthModal";
 import logoImage from "@assets/transparent_output_1770321954939.png";
 
 const blogPosts: Record<string, {
@@ -157,6 +158,7 @@ export default function BlogPost() {
   const postId = params.id || "1";
   const post = blogPosts[postId];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
@@ -232,11 +234,9 @@ export default function BlogPost() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <a href="/api/login">
-                <Button variant="outline" size="sm" className="rounded-full gap-2 hidden md:inline-flex" data-testid="button-sign-in">
-                  Sign in
-                </Button>
-              </a>
+              <Button variant="outline" size="sm" className="rounded-full gap-2 hidden md:inline-flex" data-testid="button-sign-in" onClick={() => setShowSignInModal(true)}>
+                Sign in
+              </Button>
             )}
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} data-testid="button-mobile-menu">
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -266,11 +266,9 @@ export default function BlogPost() {
                 </a>
               </div>
             ) : (
-              <a href="/api/login">
-                <Button variant="outline" size="sm" className="rounded-full gap-2 w-full mt-2" data-testid="button-sign-in-mobile">
-                  Sign in
-                </Button>
-              </a>
+              <Button variant="outline" size="sm" className="rounded-full gap-2 w-full mt-2" data-testid="button-sign-in-mobile" onClick={() => setShowSignInModal(true)}>
+                Sign in
+              </Button>
             )}
           </div>
         )}
@@ -360,6 +358,8 @@ export default function BlogPost() {
           </nav>
         </div>
       </footer>
+
+      <AuthModal open={showSignInModal} onOpenChange={setShowSignInModal} />
     </div>
   );
 }
