@@ -4,7 +4,7 @@ import http from "http";
 import path from "path";
 import pg from "pg";
 import { exportJWK, generateKeyPair } from "jose";
-import { BASE_URL, PROJECT_ROOT, TEST_DATABASE_URL, testServerEnv } from "./env";
+import { BASE_URL, OTP_CAPTURE_FILE, PROJECT_ROOT, TEST_DATABASE_URL, testServerEnv } from "./env";
 import { AUTH0_KEY_FILE } from "./helpers/auth0";
 
 let server: ChildProcess | undefined;
@@ -18,7 +18,7 @@ async function resetTestDatabase() {
   await client.connect();
   try {
     await client.query(
-      `TRUNCATE project_files, projects, custom_presets, contact_messages, subscriptions, users RESTART IDENTITY CASCADE`
+      `TRUNCATE project_files, projects, custom_presets, contact_messages, subscriptions, users, otp_codes RESTART IDENTITY CASCADE`
     );
   } finally {
     await client.end();
@@ -67,6 +67,7 @@ async function startJwksStandIn(): Promise<string> {
 
 export async function setup() {
   await resetTestDatabase();
+  fs.writeFileSync(OTP_CAPTURE_FILE, "{}");
 
   const jwksUrl = await startJwksStandIn();
 
@@ -90,6 +91,11 @@ export async function teardown() {
     fs.unlinkSync(AUTH0_KEY_FILE);
   } catch {
     // key file already gone
+  }
+  try {
+    fs.unlinkSync(OTP_CAPTURE_FILE);
+  } catch {
+    // capture file already gone
   }
   if (server && !server.killed) {
     server.kill("SIGTERM");

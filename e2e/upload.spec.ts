@@ -4,6 +4,7 @@ import { promisify } from "util";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { signInWithOtp } from "./helpers";
 
 const execFileAsync = promisify(execFile);
 
@@ -23,12 +24,7 @@ async function makeTestWav(): Promise<string> {
 test("a signed-in user can upload audio and see it processed", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByTestId("button-sign-in").click();
-  await page.getByRole("tab", { name: "Create Account" }).click();
-  await page.locator("#register-email").fill(`e2e-upload-${Date.now()}@test.quietcutter.dev`);
-  await page.locator("#register-password").fill("e2e-password-123");
-  await page.getByRole("button", { name: "Create Account", exact: true }).click();
-  await expect(page.getByTestId("button-user-menu")).toBeVisible({ timeout: 15_000 });
+  await signInWithOtp(page, `e2e-upload-${Date.now()}@test.quietcutter.dev`);
 
   const wav = await makeTestWav();
   await page.getByTestId("input-file").setInputFiles(wav);

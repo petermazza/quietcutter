@@ -21,6 +21,12 @@ export default defineConfig({
         process.env.TEST_DATABASE_URL ||
         "postgresql://petermazza@localhost:5433/quietcutter_test",
       SESSION_SECRET: "quietcutter-test-session-secret",
+      // OTP codes are captured to a local file instead of emailed so browser
+      // tests can complete the sign-in flow without a real inbox.
+      OTP_TEST_CAPTURE_FILE: "/tmp/quietcutter-e2e-otp.json",
+      OTP_RATE_LIMIT: "500",
+      OTP_VERIFY_RATE_LIMIT: "500",
+      OTP_COOLDOWN_SECONDS: "0",
       PORT: "5055",
       HOST: "127.0.0.1",
     },

@@ -58,6 +58,22 @@ async function runMigrations() {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS otp_codes (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR NOT NULL,
+        code_hash VARCHAR NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        expires_at TIMESTAMP NOT NULL,
+        used_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_otp_codes_email" ON otp_codes(email);
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id SERIAL PRIMARY KEY,
         user_id VARCHAR,

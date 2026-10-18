@@ -2,7 +2,7 @@
 
 ## Overview
 
-QuietCutter is a fully functional audio/video silence removal application with a dark navy UI. Users can sign in with email/password or Auth0 (Google), upload audio files (MP3, WAV, OGG, FLAC, M4A) or video files (MP4, MOV, AVI, MKV, WEBM), select quick presets or customize silence detection settings, and download processed files. The app includes multi-file project management with favorites, contact form, blog pages, and Stripe Pro subscription.
+QuietCutter is a fully functional audio/video silence removal application with a dark navy UI. Users can sign in with a passwordless email one-time code or Auth0 (Google), upload audio files (MP3, WAV, OGG, FLAC, M4A) or video files (MP4, MOV, AVI, MKV, WEBM), select quick presets or customize silence detection settings, and download processed files. The app includes multi-file project management with favorites, contact form, blog pages, and Stripe Pro subscription.
 
 ## User Preferences
 
@@ -14,7 +14,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 
 ## Key Features
 
-1. **Authentication**: Email/password login + Auth0 OAuth (Google)
+1. **Authentication**: Passwordless email one-time-code sign-in + Auth0 OAuth (Google)
 2. **File Upload**: Audio and video file upload with multer (max 100MB free / 500MB Pro)
 3. **Audio Processing**: FFmpeg silence removal with configurable threshold and duration
 4. **Video Processing**: FFmpeg extracts audio from video files, processes silence removal, outputs processed audio
@@ -64,7 +64,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 ### Backend Architecture
 - **Framework**: Express 5 with TypeScript
 - **Runtime**: Node.js with tsx for TypeScript execution
-- **Authentication**: Passport.js local strategy + Auth0 OAuth callback, sessions via connect-pg-simple
+- **Authentication**: Passport.js sessions via connect-pg-simple, passwordless email OTP (hashed codes in `otp_codes` table) + Auth0 OAuth callback
 - **File Upload**: Multer for audio/video file handling
 - **Audio Processing**: FFmpeg for silence removal with output format support
 - **Video Processing**: FFmpeg extracts audio from video before silence removal
@@ -74,8 +74,9 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - **Database ORM**: Drizzle ORM with PostgreSQL dialect
 
 ### Database Schema
-- **users**: User accounts with email/password or OAuth
+- **users**: User accounts (created on first verified email code or OAuth sign-in)
 - **sessions**: Auth session management (connect-pg-simple)
+- **otp_codes**: One-time sign-in codes (HMAC-hashed, 10-min expiry, 5-attempt limit, single-use)
 - **projects**: Named containers with userId, name, isFavorite, silenceThreshold, minSilenceDuration, outputFormat, createdAt
 - **project_files**: Individual files within projects with originalFileName, filePath, processedFilePath, status, settings, durations, fileType, fileSizeBytes
 - **custom_presets**: User-saved presets with threshold and duration settings (Pro only)
@@ -83,6 +84,12 @@ QuietCutter is a fully functional audio/video silence removal application with a
 - **subscriptions**: Stripe subscription tracking with userId, stripeCustomerId, stripeSubscriptionId, status, currentPeriodEnd
 
 ### API Endpoints
+- `POST /api/auth/otp/send` - Email a 6-digit sign-in code (rate-limited, 30s resend cooldown)
+- `POST /api/auth/otp/verify` - Redeem a code and create a session (auto-registers new emails)
+- `GET /api/auth/user` - Current authenticated user
+- `POST /api/auth/auth0-callback` - Verify Auth0 ID token and create session
+- `POST /api/auth/admin-login` - Admin sign-in
+- `POST /api/auth/logout` / `GET /api/logout` - End session
 - `GET /api/projects` - List user's projects (with nested files array)
 - `GET /api/projects/:id` - Get single project with files
 - `POST /api/projects` - Create empty project container
@@ -164,7 +171,7 @@ QuietCutter is a fully functional audio/video silence removal application with a
 
 ### Optional
 - `SESSION_SECRET` - Session encryption secret (defaults to fallback)
-- `RESEND_API_KEY` - Resend API key for contact form emails
+- `RESEND_API_KEY` - Resend API key for sign-in code and contact form emails (required in production for OTP)
 - `RESEND_FROM_EMAIL` - Sender email address
 - `VITE_AUTH0_DOMAIN` - Auth0 domain for OAuth
 - `VITE_AUTH0_CLIENT_ID` - Auth0 client ID for OAuth

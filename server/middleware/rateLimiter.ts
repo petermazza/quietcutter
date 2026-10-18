@@ -61,10 +61,16 @@ export const uploadLimiter = createRateLimiter({
   message: 'Too many uploads. Please wait before uploading more files.',
 });
 
-export const authLimiter = createRateLimiter({
+export const otpSendLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per 15 min
-  message: 'Too many login attempts. Please try again later.',
+  max: parseInt(process.env.OTP_RATE_LIMIT ?? "10", 10),
+  message: 'Too many code requests. Please try again later.',
+});
+
+export const otpVerifyLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.OTP_VERIFY_RATE_LIMIT ?? "15", 10),
+  message: 'Too many verification attempts. Please try again later.',
 });
 
 export const contactLimiter = createRateLimiter({

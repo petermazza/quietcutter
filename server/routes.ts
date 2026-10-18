@@ -9,7 +9,7 @@ import { contactMessages, subscriptions } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { setupAuth, registerAuthRoutes } from "./auth";
 import { requireAuth, optionalAuth } from "./middleware/auth";
-import { uploadLimiter, authLimiter, contactLimiter, apiLimiter } from "./middleware/rateLimiter";
+import { uploadLimiter, contactLimiter } from "./middleware/rateLimiter";
 import multer from "multer";
 import path from "path";
 import { promises as fs } from 'fs';

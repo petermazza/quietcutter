@@ -1,10 +1,20 @@
 import type { Express } from "express";
-import passport from "passport";
 import { db } from "../db";
-import { users } from "@shared/models/auth";
-import { eq } from "drizzle-orm";
-import { hashPassword } from "./setup";
+import { users, otpCodes } from "@shared/models/auth";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { verifyAuth0IdToken } from "./auth0";
+import { otpSendLimiter, otpVerifyLimiter } from "../middleware/rateLimiter";
+import {
+  OTP_COOLDOWN_MS,
+  OTP_MAX_ATTEMPTS,
+  OTP_TTL_MS,
+  generateOtpCode,
+  hashOtpCode,
+  isValidEmail,
+  normalizeEmail,
+  sendOtpEmail,
+  verifyOtpCodeHash,
+} from "./otp";
 
 export function registerAuthRoutes(app: Express): void {
   // Get current authenticated user
@@ -16,68 +26,132 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  // Email/password login
-  app.post("/api/auth/login", (req: any, res: any, next: any) => {
-    if (typeof req.body?.email !== "string" || typeof req.body?.password !== "string") {
-      return res.status(400).json({ message: "Email and password required" });
-    }
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) {
-        return next(err);
-      }
-      if (!user) {
-        return res.status(401).json({ message: info?.message || "Invalid credentials" });
-      }
-      req.login(user, (err: any) => {
-        if (err) {
-          return next(err);
-        }
-        return res.json({ success: true, user });
-      });
-    })(req, res, next);
-  });
-
-  // Email/password registration
-  app.post("/api/auth/register", async (req: any, res: any) => {
+  // Passwordless sign-in, step 1: email a one-time code.
+  app.post("/api/auth/otp/send", otpSendLimiter, async (req: any, res: any) => {
     try {
-      const { email, password, firstName, lastName } = req.body;
-
-      if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
-        return res.status(400).json({ message: "Email and password required" });
+      if (typeof req.body?.email !== "string") {
+        return res.status(400).json({ message: "Please provide a valid email address" });
       }
-
-      if (!/^\S+@\S+\.\S+$/.test(email)) {
+      const email = normalizeEmail(req.body.email);
+      if (!isValidEmail(email)) {
         return res.status(400).json({ message: "Please provide a valid email address" });
       }
 
-      if (password.length < 8) {
-        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      const [existing] = await db
+        .select()
+        .from(otpCodes)
+        .where(and(eq(otpCodes.email, email), isNull(otpCodes.usedAt)))
+        .orderBy(desc(otpCodes.createdAt))
+        .limit(1);
+
+      if (
+        existing?.createdAt &&
+        Date.now() - existing.createdAt.getTime() < OTP_COOLDOWN_MS
+      ) {
+        return res.status(429).json({
+          message: "Please wait 30 seconds before requesting another code",
+        });
       }
 
-      const [existing] = await db.select().from(users).where(eq(users.email, email));
-      if (existing) {
-        return res.status(400).json({ message: "Email already registered" });
-      }
+      // Invalidate any previous unused codes so only the newest one works.
+      await db
+        .update(otpCodes)
+        .set({ usedAt: new Date() })
+        .where(and(eq(otpCodes.email, email), isNull(otpCodes.usedAt)));
 
-      const passwordHash = await hashPassword(password);
-
-      const [user] = await db.insert(users).values({
+      const code = generateOtpCode();
+      await db.insert(otpCodes).values({
         email,
-        passwordHash,
-        firstName: firstName || null,
-        lastName: lastName || null,
-        profileImageUrl: null,
-      }).returning();
+        codeHash: hashOtpCode(email, code),
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      });
 
-      req.login(user, (err: any) => {
-        if (err) {
-          return res.status(500).json({ message: "Login failed after registration" });
+      try {
+        await sendOtpEmail(email, code);
+      } catch (err) {
+        console.error("Failed to send OTP email:", err);
+        return res.status(503).json({ message: "Email service is not configured" });
+      }
+
+      res.json({ success: true, message: "Verification code sent" });
+    } catch (err) {
+      console.error("OTP send error:", err);
+      res.status(500).json({ message: "Failed to send verification code" });
+    }
+  });
+
+  // Passwordless sign-in, step 2: verify the code and create the session.
+  // Unknown emails create an account automatically.
+  app.post("/api/auth/otp/verify", otpVerifyLimiter, async (req: any, res: any) => {
+    try {
+      if (typeof req.body?.email !== "string" || typeof req.body?.code !== "string") {
+        return res.status(400).json({ message: "Valid email and 6-digit code are required" });
+      }
+      const email = normalizeEmail(req.body.email);
+      const code = req.body.code.trim();
+      if (!isValidEmail(email) || !/^\d{6}$/.test(code)) {
+        return res.status(400).json({ message: "Valid email and 6-digit code are required" });
+      }
+
+      const [record] = await db
+        .select()
+        .from(otpCodes)
+        .where(and(eq(otpCodes.email, email), isNull(otpCodes.usedAt)))
+        .orderBy(desc(otpCodes.createdAt))
+        .limit(1);
+
+      if (!record || record.expiresAt.getTime() < Date.now()) {
+        return res.status(401).json({ message: "Invalid or expired verification code" });
+      }
+
+      if (record.attempts >= OTP_MAX_ATTEMPTS) {
+        return res.status(401).json({
+          message: "Too many incorrect attempts. Please request a new code.",
+        });
+      }
+
+      if (!verifyOtpCodeHash(email, code, record.codeHash)) {
+        const nextAttempts = record.attempts + 1;
+        await db
+          .update(otpCodes)
+          .set({
+            attempts: nextAttempts,
+            ...(nextAttempts >= OTP_MAX_ATTEMPTS ? { usedAt: new Date() } : {}),
+          })
+          .where(eq(otpCodes.id, record.id));
+
+        if (nextAttempts >= OTP_MAX_ATTEMPTS) {
+          return res.status(401).json({
+            message: "Too many incorrect attempts. Please request a new code.",
+          });
         }
-        return res.json({ success: true, user });
+        return res.status(401).json({ message: "Invalid or expired verification code" });
+      }
+
+      await db
+        .update(otpCodes)
+        .set({ usedAt: new Date() })
+        .where(eq(otpCodes.id, record.id));
+
+      const [existingUser] = await db.select().from(users).where(eq(users.email, email));
+      let dbUser = existingUser;
+      if (!dbUser) {
+        const [newUser] = await db
+          .insert(users)
+          .values({ email })
+          .returning();
+        dbUser = newUser;
+      }
+
+      req.login(dbUser, (err: any) => {
+        if (err) {
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        res.json({ success: true, user: dbUser });
       });
     } catch (err) {
-      console.error("Registration error:", err);
-      res.status(500).json({ message: "Registration failed" });
+      console.error("OTP verify error:", err);
+      res.status(500).json({ message: "Verification failed" });
     }
   });
 
@@ -99,7 +173,7 @@ export function registerAuthRoutes(app: Express): void {
       return res.status(401).json({ message: "Invalid Auth0 token" });
     }
 
-    const email = typeof claims.email === "string" ? claims.email : null;
+    const email = typeof claims.email === "string" ? normalizeEmail(claims.email) : null;
     if (!email) {
       return res.status(400).json({ message: "Auth0 token has no email" });
     }
@@ -160,9 +234,9 @@ export function registerAuthRoutes(app: Express): void {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
+
       console.log("Admin login requested - creating admin session");
-      
+
       // Create session for admin user
       req.login(admin, (err: any) => {
         if (err) {

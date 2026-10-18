@@ -1,4 +1,17 @@
-import { BASE_URL } from "../env";
+import { BASE_URL, OTP_CAPTURE_FILE } from "../env";
+import fs from "fs";
+
+// Reads the sign-in code the test server captured for an email. The server
+// writes codes here instead of calling Resend when OTP_TEST_CAPTURE_FILE is
+// set (see server/auth/otp.ts).
+export function readCapturedOtp(email: string): string {
+  const data = JSON.parse(fs.readFileSync(OTP_CAPTURE_FILE, "utf-8"));
+  const code = data[email.trim().toLowerCase()];
+  if (!code) {
+    throw new Error(`No captured OTP code for ${email}`);
+  }
+  return code;
+}
 
 export interface ApiResponse {
   status: number;
@@ -71,8 +84,22 @@ export class TestClient {
     return this.request(path, { method: "DELETE" });
   }
 
-  async register(email: string, password = "testpassword123", name?: { firstName?: string; lastName?: string }) {
-    return this.post("/api/auth/register", { email, password, ...name });
+  async requestOtp(email: string) {
+    return this.post("/api/auth/otp/send", { email });
+  }
+
+  async verifyOtp(email: string, code: string) {
+    return this.post("/api/auth/otp/verify", { email, code });
+  }
+
+  // Passwordless sign-in: request a code, read it from the capture file the
+  // test server writes (instead of emailing it), then verify it. Creates the
+  // account automatically for a new email.
+  async register(email: string) {
+    const sent = await this.requestOtp(email);
+    if (sent.status !== 200) return sent;
+    const code = readCapturedOtp(email);
+    return this.verifyOtp(email, code);
   }
 
   async login(email: string, password: string) {

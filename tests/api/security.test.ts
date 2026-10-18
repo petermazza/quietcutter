@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { TestClient, uniqueEmail, waitForFileStatus } from "../helpers/http";
+import { TestClient, uniqueEmail, waitForFileStatus, readCapturedOtp } from "../helpers/http";
 import { formWithFile, makeAudioWithSilence, tmpFile } from "../helpers/media";
 import { makeUserPro } from "../helpers/db";
 import { PROJECT_ROOT } from "../env";
@@ -23,39 +23,53 @@ describe("adversarial: authentication", () => {
     expect(names).not.toContain("Victim's Private Project");
   });
 
-  it("ignores isAdmin sent during registration", async () => {
+  it("creates no session when verifying a code that was never sent", async () => {
+    const attacker = new TestClient();
+    const victimEmail = uniqueEmail("otp-victim");
+    await attacker.requestOtp(uniqueEmail("attacker"));
+
+    // Guessing a code for someone else's email proves nothing.
+    const res = await attacker.verifyOtp(victimEmail, "123456");
+    expect(res.status).toBe(401);
+    expect((await attacker.get("/api/auth/user")).status).toBe(401);
+  });
+
+  it("ignores isAdmin sent during OTP verification", async () => {
     const client = new TestClient();
-    const res = await client.post("/api/auth/register", {
-      email: uniqueEmail("escalate"),
-      password: "testpassword123",
+    const email = uniqueEmail("escalate");
+    await client.requestOtp(email);
+    const res = await client.post("/api/auth/otp/verify", {
+      email,
+      code: readCapturedOtp(email),
       isAdmin: true,
     });
     expect(res.status).toBe(200);
     expect(res.body.user.isAdmin).toBeFalsy();
   });
 
-  it("rejects malformed registration payloads", async () => {
+  it("rejects malformed OTP payloads without crashing", async () => {
     const client = new TestClient();
-    const badEmail = await client.post("/api/auth/register", {
+    const badEmail = await client.post("/api/auth/otp/send", {
       email: "not-an-email",
-      password: "testpassword123",
     });
     expect(badEmail.status).toBe(400);
 
-    const objectEmail = await client.post("/api/auth/register", {
+    const objectEmail = await client.post("/api/auth/otp/send", {
       email: { inject: true },
-      password: "testpassword123",
     });
     expect(objectEmail.status).toBeLessThan(500);
-  });
 
-  it("rejects malformed login payloads without crashing", async () => {
-    const client = new TestClient();
-    const res = await client.post("/api/auth/login", {
+    const objectVerify = await client.post("/api/auth/otp/verify", {
       email: { $gt: "" },
-      password: ["a", "b"],
+      code: ["a", "b"],
     });
-    expect(res.status).toBeLessThan(500);
+    expect(objectVerify.status).toBeLessThan(500);
+
+    const injection = await client.post("/api/auth/otp/verify", {
+      email: "a@b.co",
+      code: "123456' OR '1'='1",
+    });
+    expect(injection.status).toBe(400);
   });
 });
 
