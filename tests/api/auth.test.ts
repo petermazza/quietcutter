@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TestClient, uniqueEmail, readCapturedOtp } from "../helpers/http";
-import { expireOtp } from "../helpers/db";
+import { expireOtp, ageOtpPastCooldown } from "../helpers/db";
 
 describe("authentication", () => {
   it("rejects /api/auth/user when not signed in", async () => {
@@ -86,13 +86,19 @@ describe("authentication", () => {
     expect((await client.get("/api/auth/user")).status).toBe(401);
   });
 
-  it("invalidates an older code when a new one is sent", async () => {
+  it("enforces the 30-second resend cooldown and invalidates the older code once resent", async () => {
     const client = new TestClient();
     const email = uniqueEmail("supersede");
     await client.requestOtp(email);
     const oldCode = readCapturedOtp(email);
 
-    await client.requestOtp(email);
+    // Asking for another code inside the 30-second window is refused.
+    const tooSoon = await client.requestOtp(email);
+    expect(tooSoon.status).toBe(429);
+
+    await ageOtpPastCooldown(email);
+    const resent = await client.requestOtp(email);
+    expect(resent.status).toBe(200);
     const newCode = readCapturedOtp(email);
     expect(newCode).not.toBe(oldCode);
 

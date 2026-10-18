@@ -63,6 +63,10 @@ export function registerAuthRoutes(app: Express): void {
       await db.insert(otpCodes).values({
         email,
         codeHash: hashOtpCode(email, code),
+        // Write created_at from the app (UTC) instead of the DB default so
+        // the cooldown check above compares timestamps in the same clock —
+        // a NOW() default stores local wall-clock that node reads back as UTC.
+        createdAt: new Date(),
         expiresAt: new Date(Date.now() + OTP_TTL_MS),
       });
 

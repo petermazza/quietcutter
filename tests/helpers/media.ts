@@ -24,12 +24,26 @@ export async function makeAudioWithSilence(filePath: string): Promise<string> {
   return filePath;
 }
 
-// A tiny mp4 with a 1s tone — used to exercise the video path.
+// A tiny mp4 with a 1s tone — used to test the video path.
 export async function makeVideoWithAudio(filePath: string): Promise<string> {
   await execFileAsync("ffmpeg", [
     "-y", "-f", "lavfi", "-i", "testsrc=duration=1:size=160x120:rate=10",
     "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
     "-shortest", "-pix_fmt", "yuv420p",
+    filePath,
+  ]);
+  return filePath;
+}
+
+// 1s tone + 0.3s silence + 1s tone = 2.3s of audio with a pause shorter than
+// the 500ms default minimum — the default keeps it, the old 1ms bug cut it.
+export async function makeAudioWithBriefPause(filePath: string): Promise<string> {
+  await execFileAsync("ffmpeg", [
+    "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+    "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono:d=0.3",
+    "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+    "-filter_complex", "[0][1][2]concat=n=3:v=0:a=1",
+    "-ar", "44100", "-ac", "1",
     filePath,
   ]);
   return filePath;

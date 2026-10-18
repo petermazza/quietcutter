@@ -26,7 +26,6 @@ export default defineConfig({
       OTP_TEST_CAPTURE_FILE: "/tmp/quietcutter-e2e-otp.json",
       OTP_RATE_LIMIT: "500",
       OTP_VERIFY_RATE_LIMIT: "500",
-      OTP_COOLDOWN_SECONDS: "0",
       PORT: "5055",
       HOST: "127.0.0.1",
     },

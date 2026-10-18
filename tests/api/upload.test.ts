@@ -4,6 +4,7 @@ import { TestClient, uniqueEmail, waitForFileStatus } from "../helpers/http";
 import {
   audioDuration,
   formWithFile,
+  makeAudioWithBriefPause,
   makeAudioWithSilence,
   makeOversizedFile,
   makeVideoWithAudio,
@@ -34,6 +35,20 @@ describe("upload and silence processing", () => {
     const download = await client.get(`/api/files/${file.id}/download`);
     expect(download.status).toBe(200);
     expect(download.headers.get("content-disposition")).toContain("_processed.mp3");
+  });
+
+  it("uses the 500ms default silence duration when settings are omitted", async () => {
+    const client = new TestClient();
+    const wav = await makeAudioWithBriefPause(tmpFile("brief-pause.wav"));
+
+    const res = await client.postForm("/api/upload", formWithFile("audio", wav));
+    expect(res.status).toBe(201);
+
+    const file = res.body.files[0];
+    const done = await waitForFileStatus(client, res.body.id, file.id, "completed");
+    expect(done.minSilenceDuration).toBe(500);
+    // The 300ms pause is shorter than the 500ms default, so it must not be cut.
+    expect(done.processedDurationSec).toBeGreaterThanOrEqual(2.2);
   });
 
   it("rejects unsupported file types", async () => {

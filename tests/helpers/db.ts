@@ -52,6 +52,31 @@ export async function expireOtp(email: string): Promise<void> {
   );
 }
 
+// Backdates a sign-in code's creation time past the 30-second resend
+// cooldown so a test can request a replacement code without waiting.
+export async function ageOtpPastCooldown(email: string): Promise<void> {
+  await withClient((client) =>
+    client.query(
+      `UPDATE otp_codes SET created_at = NOW() - INTERVAL '31 seconds' WHERE email = $1`,
+      [email.trim().toLowerCase()]
+    )
+  );
+}
+
+// Reads a user's subscription row so tests can verify what Stripe's
+// payment notices actually recorded.
+export async function getSubscription(
+  userId: string
+): Promise<{ status: string; cancel_at_period_end: boolean } | null> {
+  return withClient(async (client) => {
+    const res = await client.query(
+      `SELECT status, cancel_at_period_end FROM subscriptions WHERE user_id = $1`,
+      [userId]
+    );
+    return res.rows[0] ?? null;
+  });
+}
+
 // Inserts a project plus a file row pointing at real paths on disk, aged by
 // the given interval ("8 days" puts it past the cleanup window). Returns the
 // file row's id.

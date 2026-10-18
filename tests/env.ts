@@ -50,13 +50,12 @@ export function testServerEnv(auth0JwksUrl?: string): NodeJS.ProcessEnv {
     // Raised so the suite's real uploads don't trip the limiter; the flood
     // test pushes past this deliberately to prove throttling still works.
     UPLOAD_RATE_LIMIT: "200",
-    // OTP codes are captured to OTP_CAPTURE_FILE instead of emailed; the
-    // limits are raised so dozens of OTP sign-ins per run don't throttle,
-    // and the resend cooldown is disabled.
+    // OTP codes are captured to OTP_CAPTURE_FILE instead of emailed, and the
+    // send/verify limits are raised so dozens of OTP sign-ins don't throttle.
+    // The 30-second resend cooldown stays on so the suite can verify it.
     OTP_TEST_CAPTURE_FILE: OTP_CAPTURE_FILE,
     OTP_RATE_LIMIT: "500",
     OTP_VERIFY_RATE_LIMIT: "500",
-    OTP_COOLDOWN_SECONDS: "0",
     CONTACT_EMAIL_CAPTURE_FILE: CONTACT_EMAIL_CAPTURE_FILE,
     CONTACT_RATE_LIMIT: CONTACT_RATE_LIMIT,
     PORT: String(TEST_PORT),

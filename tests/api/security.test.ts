@@ -145,6 +145,53 @@ describe("adversarial: stored input and ids", () => {
     const res = await client.post("/api/projects", { name: "x".repeat(2 * 1024 * 1024) });
     expect(res.status).toBe(413);
   });
+
+  it("blocks strangers from presets, project actions, and batch downloads of someone else's files", async () => {
+    const owner = new TestClient();
+    const ownerReg = await owner.register(uniqueEmail("resowner"));
+    await makeUserPro(ownerReg.body.user.id);
+
+    const preset = await owner.post("/api/presets", {
+      name: "Owner Preset",
+      silenceThreshold: -40,
+      minSilenceDuration: 500,
+    });
+    expect(preset.status).toBe(201);
+
+    const wav = await makeAudioWithSilence(tmpFile("owner-sec.wav"));
+    const uploaded = await owner.postForm(
+      "/api/upload",
+      formWithFile("audio", wav, { projectName: "Owner Project" })
+    );
+    expect(uploaded.status).toBe(201);
+    const projectId = uploaded.body.id;
+    const fileId = uploaded.body.files[0].id;
+    await waitForFileStatus(owner, projectId, fileId, "completed");
+
+    const stranger = new TestClient();
+    const strangerReg = await stranger.register(uniqueEmail("resstranger"));
+    await makeUserPro(strangerReg.body.user.id);
+
+    // Stranger cannot delete the owner's preset.
+    expect((await stranger.delete(`/api/presets/${preset.body.id}`)).status).toBe(404);
+    const ownerPresets = await owner.get("/api/presets");
+    expect(ownerPresets.body.some((p: any) => p.id === preset.body.id)).toBe(true);
+
+    // Stranger cannot favorite, reprocess, or upload into the owner's project.
+    expect(
+      (await stranger.patch(`/api/projects/${projectId}/favorite`, { isFavorite: true })).status
+    ).toBe(403);
+    expect((await stranger.post(`/api/projects/${projectId}/reprocess`, {})).status).toBe(403);
+    const hijackUpload = await stranger.postForm(
+      "/api/upload",
+      formWithFile("audio", wav, { projectId: String(projectId) })
+    );
+    expect(hijackUpload.status).toBe(403);
+
+    // Stranger cannot pull the owner's processed file into a batch ZIP.
+    const batch = await stranger.post("/api/files/batch-download", { fileIds: [fileId] });
+    expect(batch.status).toBe(404);
+  });
 });
 
 describe("adversarial: uploads", () => {
