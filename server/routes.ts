@@ -673,13 +673,8 @@ export async function registerRoutes(
       const contactMessage = await storage.createContactMessage({ name, email, subject, message });
 
       try {
-        const { client: resend, fromEmail } = await getUncachableResendClient();
-        await resend.emails.send({
-          from: fromEmail || "QuietCutter <noreply@quietcutter.com>",
-          to: "support@quietcutter.com",
-          replyTo: email,
-          subject: `[QuietCutter Contact] ${escapeHtml(subject)}`,
-          html: `
+        const emailSubject = `[QuietCutter Contact] ${escapeHtml(subject)}`;
+        const html = `
             <h2>New Contact Form Message</h2>
             <p><strong>From:</strong> ${escapeHtml(name)} (${escapeHtml(email)})</p>
             <p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
@@ -687,8 +682,26 @@ export async function registerRoutes(
             <p>${escapeHtml(message).replace(/\n/g, "<br />")}</p>
             <hr />
             <p style="color: #888; font-size: 12px;">Reply directly to this email to respond to ${escapeHtml(name)}.</p>
-          `,
-        });
+          `;
+
+        // When the capture file setting is present (test suites), record the
+        // email instead of sending it — same pattern as OTP_TEST_CAPTURE_FILE.
+        const captureFile = process.env.CONTACT_EMAIL_CAPTURE_FILE;
+        if (captureFile) {
+          fsSync.writeFileSync(
+            captureFile,
+            JSON.stringify({ to: "support@quietcutter.com", replyTo: email, subject: emailSubject, html })
+          );
+        } else {
+          const { client: resend, fromEmail } = await getUncachableResendClient();
+          await resend.emails.send({
+            from: fromEmail || "QuietCutter <noreply@quietcutter.com>",
+            to: "support@quietcutter.com",
+            replyTo: email,
+            subject: emailSubject,
+            html,
+          });
+        }
       } catch (emailErr) {
         console.error("Failed to send contact email via Resend:", emailErr);
       }

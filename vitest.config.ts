@@ -1,6 +1,11 @@
 import { defineConfig } from "vitest/config";
+import path from "path";
 
 export default defineConfig({
+  resolve: {
+    // Lets tests import server modules that use the app's "@shared" alias.
+    alias: { "@shared": path.resolve(__dirname, "shared") },
+  },
   test: {
     include: ["tests/**/*.test.ts"],
     globalSetup: ["tests/global-setup.ts"],

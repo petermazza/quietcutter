@@ -51,3 +51,36 @@ export async function expireOtp(email: string): Promise<void> {
     )
   );
 }
+
+// Inserts a project plus a file row pointing at real paths on disk, aged by
+// the given interval ("8 days" puts it past the cleanup window). Returns the
+// file row's id.
+export async function insertProjectFile(
+  originalPath: string,
+  processedPath: string,
+  age = "0 days"
+): Promise<number> {
+  return withClient(async (client) => {
+    const proj = await client.query(
+      `INSERT INTO projects (name) VALUES ('cleanup-test') RETURNING id`
+    );
+    const res = await client.query(
+      `INSERT INTO project_files (project_id, original_file_name, original_file_path, processed_file_path, status, created_at)
+       VALUES ($1, 'old.mp3', $2, $3, 'completed', NOW() - $4::interval) RETURNING id`,
+      [proj.rows[0].id, originalPath, processedPath, age]
+    );
+    return res.rows[0].id;
+  });
+}
+
+export async function getProjectFilePaths(
+  id: number
+): Promise<{ original_file_path: string | null; processed_file_path: string | null }> {
+  return withClient(async (client) => {
+    const res = await client.query(
+      `SELECT original_file_path, processed_file_path FROM project_files WHERE id = $1`,
+      [id]
+    );
+    return res.rows[0];
+  });
+}

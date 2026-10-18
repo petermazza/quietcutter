@@ -4,7 +4,7 @@ import http from "http";
 import path from "path";
 import pg from "pg";
 import { exportJWK, generateKeyPair } from "jose";
-import { BASE_URL, OTP_CAPTURE_FILE, PROJECT_ROOT, TEST_DATABASE_URL, testServerEnv } from "./env";
+import { BASE_URL, CONTACT_EMAIL_CAPTURE_FILE, OTP_CAPTURE_FILE, PROJECT_ROOT, TEST_DATABASE_URL, testServerEnv } from "./env";
 import { AUTH0_KEY_FILE } from "./helpers/auth0";
 
 let server: ChildProcess | undefined;
@@ -68,6 +68,11 @@ async function startJwksStandIn(): Promise<string> {
 export async function setup() {
   await resetTestDatabase();
   fs.writeFileSync(OTP_CAPTURE_FILE, "{}");
+  try {
+    fs.unlinkSync(CONTACT_EMAIL_CAPTURE_FILE);
+  } catch {
+    // capture file already gone
+  }
 
   const jwksUrl = await startJwksStandIn();
 
@@ -94,6 +99,11 @@ export async function teardown() {
   }
   try {
     fs.unlinkSync(OTP_CAPTURE_FILE);
+  } catch {
+    // capture file already gone
+  }
+  try {
+    fs.unlinkSync(CONTACT_EMAIL_CAPTURE_FILE);
   } catch {
     // capture file already gone
   }

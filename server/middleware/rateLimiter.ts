@@ -75,6 +75,6 @@ export const otpVerifyLimiter = createRateLimiter({
 
 export const contactLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // 3 messages per hour
+  max: parseInt(process.env.CONTACT_RATE_LIMIT ?? "3", 10), // 3 messages per hour
   message: 'Too many contact form submissions. Please try again later.',
 });

@@ -21,6 +21,17 @@ export const OTP_CAPTURE_FILE = path.join(
   "quietcutter-test-otp.json"
 );
 
+// Same idea for contact-form emails: the server writes the would-be Resend
+// payload here so tests can inspect exactly what support would receive.
+export const CONTACT_EMAIL_CAPTURE_FILE = path.join(
+  os.tmpdir(),
+  "quietcutter-test-contact-email.json"
+);
+
+// Raised by one above the real default (3/hour) so the escaping test gets a
+// submission without exhausting the budget the rate-limit test relies on.
+export const CONTACT_RATE_LIMIT = "4";
+
 export function testServerEnv(auth0JwksUrl?: string): NodeJS.ProcessEnv {
   return {
     ...process.env,
@@ -46,6 +57,8 @@ export function testServerEnv(auth0JwksUrl?: string): NodeJS.ProcessEnv {
     OTP_RATE_LIMIT: "500",
     OTP_VERIFY_RATE_LIMIT: "500",
     OTP_COOLDOWN_SECONDS: "0",
+    CONTACT_EMAIL_CAPTURE_FILE: CONTACT_EMAIL_CAPTURE_FILE,
+    CONTACT_RATE_LIMIT: CONTACT_RATE_LIMIT,
     PORT: String(TEST_PORT),
     HOST: "127.0.0.1",
   };
