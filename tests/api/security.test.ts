@@ -195,8 +195,16 @@ describe("adversarial: stored input and ids", () => {
 });
 
 describe("adversarial: uploads", () => {
+  it("rejects anonymous uploads", async () => {
+    const client = new TestClient();
+    const wav = await makeAudioWithSilence(tmpFile("anon.wav"));
+    const res = await client.postForm("/api/upload", formWithFile("audio", wav));
+    expect(res.status).toBe(401);
+  });
+
   it("keeps uploaded files inside the uploads directory", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("traversal"));
     const wav = await makeAudioWithSilence(tmpFile("safe.wav"));
 
     const form = new FormData();
@@ -211,6 +219,7 @@ describe("adversarial: uploads", () => {
 
   it("processes uploads even when settings fields contain garbage", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("garbage"));
     const wav = await makeAudioWithSilence(tmpFile("garbage.wav"));
 
     const res = await client.postForm(
@@ -228,6 +237,7 @@ describe("adversarial: uploads", () => {
 
   it("rejects files sent under the wrong form field", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("wrongfield"));
     const wav = await makeAudioWithSilence(tmpFile("wrongfield.wav"));
     const res = await client.postForm("/api/upload", formWithFile("file", wav));
     expect(res.status).toBe(400);
@@ -235,6 +245,7 @@ describe("adversarial: uploads", () => {
 
   it("marks disguised non-audio files as failed instead of hanging", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("disguised"));
     const fake = tmpFile("fake.wav");
     fs.writeFileSync(fake, "this is definitely not audio data");
 
@@ -246,6 +257,7 @@ describe("adversarial: uploads", () => {
 
   it("handles zero-byte uploads without crashing", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("zerobyte"));
     const empty = tmpFile("empty.wav");
     fs.writeFileSync(empty, "");
 

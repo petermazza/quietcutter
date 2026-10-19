@@ -126,9 +126,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProject(id: number): Promise<boolean> {
-    await db.delete(projectFiles).where(eq(projectFiles.projectId, id));
-    const result = await db.delete(projects).where(eq(projects.id, id)).returning();
-    return result.length > 0;
+    return await db.transaction(async (tx) => {
+      await tx.delete(projectFiles).where(eq(projectFiles.projectId, id));
+      const result = await tx.delete(projects).where(eq(projects.id, id)).returning();
+      return result.length > 0;
+    });
   }
 
   async getFavorites(userId?: string | null): Promise<Project[]> {

@@ -23,8 +23,12 @@ export function generateOtpCode(): string {
 // Codes are stored as HMAC-SHA256 hashes keyed by SESSION_SECRET so a
 // database read can never recover the plaintext code.
 export function hashOtpCode(email: string, code: string): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("SESSION_SECRET environment variable is required");
+  }
   return crypto
-    .createHmac("sha256", process.env.SESSION_SECRET || "otp-secret")
+    .createHmac("sha256", secret)
     .update(`${normalizeEmail(email)}:${code}`)
     .digest("hex");
 }

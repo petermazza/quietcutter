@@ -165,12 +165,12 @@ QuietCutter is a fully functional audio/video silence removal application with a
 
 ### Required
 - `DATABASE_URL` - PostgreSQL connection string
+- `SESSION_SECRET` - Session encryption secret (server refuses to start without it)
 - `STRIPE_SECRET_KEY` - Stripe secret API key
 - `STRIPE_PUBLISHABLE_KEY` - Stripe publishable API key
 - `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
 
 ### Optional
-- `SESSION_SECRET` - Session encryption secret (defaults to fallback)
 - `RESEND_API_KEY` - Resend API key for sign-in code and contact form emails (required in production for OTP)
 - `RESEND_FROM_EMAIL` - Sender email address
 - `VITE_AUTH0_DOMAIN` - Auth0 domain for OAuth

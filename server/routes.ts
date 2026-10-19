@@ -159,6 +159,15 @@ async function processNext() {
   processNext();
 }
 
+// Ownerless projects must fail closed — an anonymous upload used to create
+// userId:null rows that anyone could read, edit, or delete.
+function canAccessProject(
+  project: { userId: string | null } | undefined,
+  userId: string | null | undefined
+): boolean {
+  return !!project && !!project.userId && !!userId && project.userId === userId;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -238,7 +247,7 @@ export async function registerRoutes(
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
-      if (project.userId && project.userId !== userId) {
+      if (!canAccessProject(project, userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
       const files = await storage.getProjectFiles(id);
@@ -249,7 +258,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.projects.create.path, optionalAuth, async (req, res) => {
+  app.post(api.projects.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.projects.create.input.parse(req.body);
       const userId = (req as any).user?.id || null;
@@ -307,7 +316,7 @@ export async function registerRoutes(
       if (!existingProject) {
         return res.status(404).json({ message: "Project not found" });
       }
-      if (existingProject.userId && existingProject.userId !== userId) {
+      if (!canAccessProject(existingProject, userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
       const input = api.projects.update.input.parse(req.body);
@@ -340,7 +349,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Project not found" });
       }
       
-      if (project.userId && project.userId !== userId) {
+      if (!canAccessProject(project, userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -377,7 +386,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/upload", uploadLimiter, optionalAuth, (req: any, res: any, next: any) => {
+  app.post("/api/upload", uploadLimiter, requireAuth, (req: any, res: any, next: any) => {
     upload.array("audio", 3)(req, res, (err: any) => {
       if (err) {
         if (err.code === 'LIMIT_FILE_SIZE') {
@@ -395,6 +404,7 @@ export async function registerRoutes(
       }
 
       const userId = req.user?.id || null;
+      if (!userId) return res.status(401).json({ message: "Sign in required" });
       const isPro = await checkIsPro(userId);
 
       const fileSizeLimit = isPro ? PRO_FILE_SIZE_LIMIT : FREE_FILE_SIZE_LIMIT;
@@ -434,7 +444,7 @@ export async function registerRoutes(
           }
           return res.status(404).json({ message: "Project not found" });
         }
-        if (existingProject.userId && existingProject.userId !== userId) {
+        if (!canAccessProject(existingProject, userId)) {
           for (const file of files) { 
             try { await fs.unlink(file.path); } catch (err) {
               console.error('Failed to delete file for unauthorized access:', file.path, err);
@@ -469,14 +479,8 @@ export async function registerRoutes(
         const project = await storage.createProject({ name: projectName, userId });
         projectId = project.id;
       } else {
-        if (userId) {
-          const defaultProject = await storage.getDefaultProject(userId);
-          projectId = defaultProject.id;
-        } else {
-          const name = files[0].originalname.replace(/\.[^/.]+$/, "");
-          const project = await storage.createProject({ name, userId });
-          projectId = project.id;
-        }
+        const defaultProject = await storage.getDefaultProject(userId);
+        projectId = defaultProject.id;
       }
 
       const createdFiles = [];
@@ -511,6 +515,12 @@ export async function registerRoutes(
       res.status(201).json({ ...project, files: allFiles });
     } catch (err) {
       console.error("Error uploading file:", err);
+      const uploaded = (req.files as Express.Multer.File[] | undefined) || [];
+      for (const file of uploaded) {
+        try { await fs.unlink(file.path); } catch (unlinkErr) {
+          console.error('Failed to delete file after upload error:', file.path, unlinkErr);
+        }
+      }
       res.status(500).json({ message: "Failed to upload file" });
     }
   });
@@ -527,7 +537,7 @@ export async function registerRoutes(
       }
 
       const project = await storage.getProject(file.projectId);
-      if (project?.userId && project.userId !== userId) {
+      if (!canAccessProject(project, userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -556,7 +566,7 @@ export async function registerRoutes(
       }
 
       const project = await storage.getProject(file.projectId);
-      if (project?.userId && project.userId !== userId) {
+      if (!canAccessProject(project, userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -579,18 +589,22 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/projects/:id/favorite", async (req, res) => {
+  app.patch("/api/projects/:id/favorite", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id as string, 10);
       const userId = (req as any).user?.id || null;
       const { isFavorite } = req.body;
-      
+
+      if (typeof isFavorite !== "boolean") {
+        return res.status(400).json({ message: "isFavorite must be a boolean" });
+      }
+
       const existingProject = await storage.getProject(id);
       if (!existingProject) {
         return res.status(404).json({ message: "Project not found" });
       }
-      
-      if (existingProject.userId && existingProject.userId !== userId) {
+
+      if (!canAccessProject(existingProject, userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -611,7 +625,7 @@ export async function registerRoutes(
 
       const project = await storage.getProject(id);
       if (!project) return res.status(404).json({ message: "Project not found" });
-      if (project.userId && project.userId !== userId) return res.status(403).json({ message: "Access denied" });
+      if (!canAccessProject(project, userId)) return res.status(403).json({ message: "Access denied" });
 
       const isPro = await checkIsPro(userId);
       const files = await storage.getProjectFiles(id);
@@ -793,7 +807,7 @@ export async function registerRoutes(
         const file = await storage.getProjectFile(fileId);
         if (file && file.status === "completed" && file.processedFilePath) {
           const project = await storage.getProject(file.projectId);
-          if (!project?.userId || project.userId === userId) {
+          if (canAccessProject(project, userId)) {
             files.push(file);
           }
         }
@@ -880,7 +894,7 @@ export async function registerRoutes(
       }
 
       const project = await storage.getProject(file.projectId);
-      if (project?.userId && project.userId !== userId) {
+      if (!canAccessProject(project, userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
 

@@ -19,8 +19,10 @@ function getDatabaseUrl() {
 export const pool = new Pool({ connectionString: getDatabaseUrl() });
 export const db = drizzle(pool, { schema });
 
-// Create admin user if it doesn't exist
+// Create admin user if it doesn't exist — dev/test only. In production a
+// quietcutter.dev login code must never grant free admin Pro access.
 export async function ensureAdminUser() {
+  if (process.env.NODE_ENV === "production") return;
   try {
     const adminEmail = "admin@quietcutter.dev";
     

@@ -16,11 +16,18 @@ import {
   verifyOtpCodeHash,
 } from "./otp";
 
+// passwordHash and other sensitive columns must never reach the browser.
+function sanitizeUser(u: any) {
+  if (!u) return u;
+  const { passwordHash, ...safe } = u;
+  return safe;
+}
+
 export function registerAuthRoutes(app: Express): void {
   // Get current authenticated user
   app.get("/api/auth/user", (req: any, res: any) => {
     if (req.isAuthenticated()) {
-      res.json(req.user);
+      res.json(sanitizeUser(req.user));
     } else {
       res.status(401).json({ message: "Not authenticated" });
     }
@@ -151,7 +158,7 @@ export function registerAuthRoutes(app: Express): void {
         if (err) {
           return res.status(500).json({ message: "Failed to create session" });
         }
-        res.json({ success: true, user: dbUser });
+        res.json({ success: true, user: sanitizeUser(dbUser) });
       });
     } catch (err) {
       console.error("OTP verify error:", err);
@@ -211,7 +218,7 @@ export function registerAuthRoutes(app: Express): void {
         if (err) {
           return res.status(500).json({ message: "Failed to create session", error: err.message });
         }
-        res.json({ user: dbUser });
+        res.json({ user: sanitizeUser(dbUser) });
       });
     } catch (error: any) {
       console.error("Auth0 callback error:", error);

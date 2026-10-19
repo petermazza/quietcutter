@@ -16,6 +16,7 @@ import {
 describe("upload and silence processing", () => {
   it("removes silence from an audio file end to end", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("e2e"));
     const wav = await makeAudioWithSilence(tmpFile("speech.wav"));
     const inputDuration = await audioDuration(wav);
     expect(inputDuration).toBeCloseTo(4, 0);
@@ -39,6 +40,7 @@ describe("upload and silence processing", () => {
 
   it("uses the 500ms default silence duration when settings are omitted", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("defaults"));
     const wav = await makeAudioWithBriefPause(tmpFile("brief-pause.wav"));
 
     const res = await client.postForm("/api/upload", formWithFile("audio", wav));
@@ -53,6 +55,7 @@ describe("upload and silence processing", () => {
 
   it("rejects unsupported file types", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("badtype"));
     const txt = tmpFile("notes.txt");
     fs.writeFileSync(txt, "not audio");
 
@@ -63,6 +66,7 @@ describe("upload and silence processing", () => {
 
   it("rejects files over the 100MB free limit", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("toobig"));
     const big = makeOversizedFile(tmpFile("big.wav"), 101 * 1024 * 1024);
 
     const res = await client.postForm("/api/upload", formWithFile("audio", big));
@@ -116,6 +120,7 @@ describe("upload and silence processing", () => {
 
   it("extracts audio from a video file and processes it", async () => {
     const client = new TestClient();
+    await client.register(uniqueEmail("vidextract"));
     const mp4 = await makeVideoWithAudio(tmpFile("clip.mp4"));
 
     const res = await client.postForm("/api/upload", formWithFile("audio", mp4));

@@ -26,14 +26,12 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const auth0ClientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
   const isAuth0Enabled = !!(auth0Domain && auth0ClientId);
 
-  // Validate Auth0 configuration for production
+  // Warn if Auth0 dev keys ship in a production build
   const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
   const isUsingDevKeys = auth0Domain?.includes('dev-') || auth0Domain?.includes('-auth0.com') && auth0Domain?.startsWith('dev-');
 
   if (isProduction && isUsingDevKeys) {
     console.error('SECURITY WARNING: Using Auth0 development keys in production environment!');
-    // Disable Auth0 in production if dev keys are detected
-    const isAuth0Enabled = false;
   }
 
   useEffect(() => {
