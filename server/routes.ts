@@ -707,20 +707,33 @@ export async function registerRoutes(
             JSON.stringify({ to: "support@quietcutter.com", replyTo: email, subject: emailSubject, html })
           );
         } else {
-          const { client: resend, fromEmail } = await getUncachableResendClient();
-          await resend.emails.send({
-            from: fromEmail || "QuietCutter <noreply@quietcutter.com>",
-            to: "support@quietcutter.com",
-            replyTo: email,
-            subject: emailSubject,
-            html,
-          });
+          // The message is already persisted — retry the notification in the
+          // background so a transient Resend failure doesn't lose it.
+          void (async () => {
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                const { client: resend, fromEmail } = await getUncachableResendClient();
+                await resend.emails.send({
+                  from: fromEmail || "QuietCutter <noreply@quietcutter.com>",
+                  to: "support@quietcutter.com",
+                  replyTo: email,
+                  subject: emailSubject,
+                  html,
+                });
+                return;
+              } catch (retryErr) {
+                console.error(`Contact email attempt ${attempt + 1} failed:`, retryErr);
+                await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+              }
+            }
+            console.error("Contact notification email gave up after 3 attempts:", contactMessage.id);
+          })();
         }
       } catch (emailErr) {
         console.error("Failed to send contact email via Resend:", emailErr);
       }
 
-      res.status(201).json({ success: true, message: "Message sent successfully" });
+      res.status(201).json({ success: true, message: "Message received" });
     } catch (err) {
       console.error("Error saving contact message:", err);
       res.status(500).json({ message: "Failed to send message" });

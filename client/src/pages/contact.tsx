@@ -43,7 +43,7 @@ export default function Contact() {
       if (!res.ok) throw new Error("Failed to send message");
       
       toast({
-        title: "Message sent",
+        title: "Message received",
         description: "Thanks for reaching out! We'll get back to you soon.",
       });
       

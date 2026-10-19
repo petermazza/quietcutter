@@ -792,7 +792,7 @@ export default function Home() {
                       <Crown className="w-3.5 h-3.5" />
                       Upgrade to Pro
                     </Button>
-                    <span className="text-[10px] text-muted-foreground">From $9.99/month</span>
+                    <span className="text-[10px] text-muted-foreground">See plans</span>
                   </div>
                 </div>
               </CardContent>

@@ -10,9 +10,20 @@ export const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.
 export const TEST_PORT = 5055;
 export const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
 
-export const TEST_DATABASE_URL =
+const testDbUrl =
   process.env.TEST_DATABASE_URL ||
   "postgresql://petermazza@localhost:5433/quietcutter_test";
+
+// The suite wipes this database — refuse anything that could point at a
+// live or hosted database.
+const testDbHost = new URL(testDbUrl).hostname;
+if (!["localhost", "127.0.0.1", "::1"].includes(testDbHost)) {
+  throw new Error(
+    `TEST_DATABASE_URL must point at a local database (got host "${testDbHost}")`,
+  );
+}
+
+export const TEST_DATABASE_URL = testDbUrl;
 
 // When the test server sees this env var it records each OTP code here
 // (keyed by email) instead of calling Resend — see server/auth/otp.ts.

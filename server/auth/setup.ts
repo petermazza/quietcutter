@@ -28,8 +28,9 @@ export function getSession() {
       });
       console.log("Using PostgreSQL session store");
     } catch (error) {
-      console.warn("Failed to create PostgreSQL session store, falling back to memory store:", error);
-      sessionStore = new session.MemoryStore();
+      // Sessions falling back to memory means every restart signs every
+      // user out — refuse to boot rather than run degraded silently.
+      throw new Error("PostgreSQL session store failed to initialize", { cause: error });
     }
   } else {
     console.log("Using memory session store for development");
