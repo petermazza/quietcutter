@@ -22,6 +22,7 @@ describe("contact form", () => {
       message: "This is a test message.",
     });
     expect(res.status).toBe(201);
+    expect(res.body.message).toBe("Message received");
 
     expect(await getContactMessageCount()).toBe(before + 1);
   });
