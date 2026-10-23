@@ -133,13 +133,20 @@ app.use((req, res, next) => {
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   
   // Content Security Policy
+  const isDev = process.env.NODE_ENV === 'development';
+  const scriptSrc = isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com"
+    : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://checkout.stripe.com";
+  const connectSrc = isDev
+    ? "connect-src 'self' https://api.stripe.com https://checkout.stripe.com ws://localhost:5000 wss://localhost:5000"
+    : "connect-src 'self' https://api.stripe.com https://checkout.stripe.com";
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com",
+    scriptSrc,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://api.stripe.com https://checkout.stripe.com ws://localhost:5000 wss://localhost:5000",
+    connectSrc,
     "frame-src 'self' https://js.stripe.com https://checkout.stripe.com",
     "object-src 'none'",
     "base-uri 'self'",

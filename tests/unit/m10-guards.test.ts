@@ -136,4 +136,11 @@ describe("m10 guards: upgrade pricing copy", () => {
     expect(src).toContain("See plans");
     expect(src).not.toMatch(/\$\d/);
   });
+
+  it("production Content-Security-Policy omits unsafe-eval", () => {
+    const src = fs.readFileSync(path.join(ROOT, "server/index.ts"), "utf8");
+    const prodBranch = src.match(/:\s*"script-src[^"]+"/);
+    expect(prodBranch).not.toBeNull();
+    expect(prodBranch![0]).not.toContain("unsafe-eval");
+  });
 });
