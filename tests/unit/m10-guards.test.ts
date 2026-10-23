@@ -143,4 +143,15 @@ describe("m10 guards: upgrade pricing copy", () => {
     expect(prodBranch).not.toBeNull();
     expect(prodBranch![0]).not.toContain("unsafe-eval");
   });
+
+  it("package.json keeps @types/* out of production dependencies and defines check:audit", () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(ROOT, "package.json"), "utf8")
+    );
+    const prodTypes = Object.keys(pkg.dependencies ?? {}).filter((k) =>
+      k.startsWith("@types/")
+    );
+    expect(prodTypes).toEqual([]);
+    expect(pkg.scripts?.["check:audit"]).toContain("npm audit --omit=dev");
+  });
 });

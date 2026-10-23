@@ -12,7 +12,8 @@
     "test": "vitest run tests/api tests/unit",
     "test:flood": "vitest run tests/flood",
     "test:all": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:audit": "npm audit --omit=dev --audit-level=moderate"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -114,6 +115,7 @@
     "drizzle-kit": {
       "@esbuild-kit/esm-loader": "npm:tsx@^4.20.4"
     },
+    "body-parser": "^2.3.0",
     "proxy-addr": "^2.0.8",
     "qs": "^6.16.1",
     "source-map-js": "^1.2.2",
