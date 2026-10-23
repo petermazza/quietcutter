@@ -13,3 +13,4 @@ playwright-report/
 uploads/*
 # Editor workspace files
 *.code-workspace
+cookies.txt
