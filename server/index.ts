@@ -146,6 +146,7 @@ app.use((req, res, next) => {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
+    "media-src 'self' blob:",
     connectSrc,
     "frame-src 'self' https://js.stripe.com https://checkout.stripe.com",
     "object-src 'none'",

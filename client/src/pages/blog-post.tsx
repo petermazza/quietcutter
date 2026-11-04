@@ -340,7 +340,7 @@ export default function BlogPost() {
         <div className="mt-12 text-center">
           <h3 className="text-xl font-semibold mb-4">Ready to try QuietCutter?</h3>
           <Link href="/">
-            <Button className="bg-gradient-to-r from-teal-500 to-purple-500">
+            <Button className="bg-gradient-to-r from-teal-500 to-violet-600">
               Get Started Free
             </Button>
           </Link>

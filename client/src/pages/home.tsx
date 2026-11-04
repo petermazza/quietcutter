@@ -427,6 +427,8 @@ export default function Home() {
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
+        waveColor: '#6fe0d8',
+        progressColor: '#b86cf0',
         cursorWidth: 0,
         normalize: true,
         interact: false,
@@ -511,7 +513,7 @@ export default function Home() {
               {authLoading ? null : isAuthenticated ? (
                 <>
                   {!isPro && (
-                    <Button size="sm" className="rounded-full gap-1 bg-gradient-to-r from-blue-500 to-purple-500 text-xs" onClick={handleUpgrade} data-testid="button-upgrade">
+                    <Button size="sm" className="rounded-full gap-1 bg-gradient-to-r from-teal-600 to-purple-500 text-xs" onClick={handleUpgrade} data-testid="button-upgrade">
                       <Crown className="w-3 h-3" />
                       Pro
                     </Button>
@@ -607,10 +609,16 @@ export default function Home() {
       <main className="flex-1 overflow-y-auto">
         <div className="w-full max-w-3xl mx-auto p-4 md:p-5 space-y-3">
 
-          <div className="flex flex-col items-center gap-2 py-4">
-            <img src={logoImage} alt="QuietCutter" className="w-16 h-16 rounded-xl" />
-            <span className="font-semibold text-2xl" style={{ fontFamily: "'Outfit', sans-serif" }}>QuietCutter</span>
-            <p className="text-xs text-muted-foreground tracking-[0.2em] uppercase">&mdash; Make Every Second Count &mdash;</p>
+          <div className="relative flex flex-col items-center gap-2 py-6">
+            <svg aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 w-full h-24 opacity-40 [mask-image:linear-gradient(90deg,transparent,#000_30%,#000_70%,transparent)]" viewBox="0 0 400 60" preserveAspectRatio="none">
+              <defs><linearGradient id="wave" x1="0" x2="1"><stop offset="0" stopColor="#b86cf0"/><stop offset="1" stopColor="#5fd3d0"/></linearGradient></defs>
+              {[6,14,10,22,16,30,12,26,40,18,34,48,20,38,52,24,44,56,28,50,32,54,22,46,30,42,16,36,24,48,12,28,20,34,10,22,14,8,18,6].map((h, i) => (
+                <rect key={i} x={i * 10 + 2} y={30 - h / 2} width="4" height={h} rx="2" fill="url(#wave)" />
+              ))}
+            </svg>
+            <img src={logoImage} alt="QuietCutter" className="relative w-16 h-16 rounded-xl" />
+            <span className="relative font-semibold text-3xl" style={{ fontFamily: "'Outfit', sans-serif" }}>QuietCutter</span>
+            <p className="relative text-xs text-muted-foreground tracking-[0.2em] uppercase">&mdash; Make Every Second Count &mdash;</p>
           </div>
 
           <Card>
@@ -619,7 +627,7 @@ export default function Home() {
                 <h2 className="font-semibold text-sm">Upload Audio / Video</h2>
                 <div className="flex items-center gap-2 flex-wrap">
                   {isPro ? (
-                    <Badge className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border-blue-500/30" data-testid="badge-pro-batch">
+                    <Badge className="bg-gradient-to-r from-teal-400/20 to-purple-500/20 text-primary-foreground border-teal-400/30" data-testid="badge-pro-batch">
                       Up to 3 files
                     </Badge>
                   ) : isAuthenticated ? (
@@ -706,7 +714,7 @@ export default function Home() {
 
               <div
                 className={`border-2 border-dashed rounded-md p-5 text-center transition-colors cursor-pointer ${
-                  isDragging ? "border-primary bg-primary/5" : "border-border"
+                  isDragging ? "border-primary bg-primary/5" : "border-primary/25 hover:border-primary/60 hover:bg-primary/5"
                 } ${isUploading ? "pointer-events-none opacity-50" : ""}`}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
@@ -752,7 +760,7 @@ export default function Home() {
           </Card>
 
           {isAuthenticated && !isPro && (
-            <Card className="border-purple-500/30 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-indigo-500/10 overflow-visible" data-testid="card-upgrade-cta">
+            <Card className="border-purple-500/30 bg-gradient-to-br from-teal-400/10 via-purple-500/10 to-indigo-500/10 overflow-visible" data-testid="card-upgrade-cta">
               <CardContent className="p-4 md:p-5">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="space-y-3 flex-1 min-w-[200px]">
@@ -762,33 +770,33 @@ export default function Home() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
                       <div className="flex items-center gap-2">
-                        <FolderOpen className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <FolderOpen className="w-3.5 h-3.5 text-teal-300 flex-shrink-0" />
                         <span className="text-xs text-muted-foreground">Unlimited projects</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Upload className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <Upload className="w-3.5 h-3.5 text-teal-300 flex-shrink-0" />
                         <span className="text-xs text-muted-foreground">500MB files, batch upload</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <FileAudio className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <FileAudio className="w-3.5 h-3.5 text-teal-300 flex-shrink-0" />
                         <span className="text-xs text-muted-foreground">WAV, FLAC & MP3 320k output</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-teal-300 flex-shrink-0" />
                         <span className="text-xs text-muted-foreground">All presets & custom presets</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Play className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <Play className="w-3.5 h-3.5 text-teal-300 flex-shrink-0" />
                         <span className="text-xs text-muted-foreground">Audio preview & waveform</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Package className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <Package className="w-3.5 h-3.5 text-teal-300 flex-shrink-0" />
                         <span className="text-xs text-muted-foreground">Bulk download as ZIP</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                    <Button size="sm" className="rounded-full gap-1.5 bg-gradient-to-r from-blue-500 to-purple-500" onClick={handleUpgrade} data-testid="button-upgrade-cta">
+                    <Button size="sm" className="rounded-full gap-1.5 bg-gradient-to-r from-teal-600 to-violet-600" onClick={handleUpgrade} data-testid="button-upgrade-cta">
                       <Crown className="w-3.5 h-3.5" />
                       Upgrade to Pro
                     </Button>
@@ -1222,35 +1230,35 @@ export default function Home() {
                 <p className="text-xs font-medium text-foreground/80 text-center">What you get with Pro:</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                   <div className="flex items-center gap-1.5">
-                    <FolderOpen className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <FolderOpen className="w-3 h-3 text-teal-300 flex-shrink-0" />
                     <span className="text-foreground/70">Unlimited project history</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Upload className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <Upload className="w-3 h-3 text-teal-300 flex-shrink-0" />
                     <span className="text-foreground/70">500MB file size limit</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <SlidersHorizontal className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <SlidersHorizontal className="w-3 h-3 text-teal-300 flex-shrink-0" />
                     <span className="text-foreground/70">All presets + custom presets</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <FileAudio className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <FileAudio className="w-3 h-3 text-teal-300 flex-shrink-0" />
                     <span className="text-foreground/70">MP3, WAV, FLAC output</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Package className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <Package className="w-3 h-3 text-teal-300 flex-shrink-0" />
                     <span className="text-foreground/70">Batch upload (3 files)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Clock className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <Clock className="w-3 h-3 text-teal-300 flex-shrink-0" />
                     <span className="text-foreground/70">Priority processing</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Play className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <Play className="w-3 h-3 text-teal-300 flex-shrink-0" />
                     <span className="text-foreground/70">Audio preview + waveform</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Download className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <Download className="w-3 h-3 text-teal-300 flex-shrink-0" />
                     <span className="text-foreground/70">Bulk download as ZIP</span>
                   </div>
                 </div>
@@ -1314,7 +1322,7 @@ function ProjectCard({
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className="text-[10px] text-muted-foreground">{totalFiles} file{totalFiles !== 1 ? "s" : ""}</span>
                 {completedCount > 0 && <span className="text-[10px] text-green-400">{completedCount} done</span>}
-                {processingCount > 0 && <span className="text-[10px] text-blue-400">{processingCount} processing</span>}
+                {processingCount > 0 && <span className="text-[10px] text-teal-300">{processingCount} processing</span>}
               </div>
             </div>
           </div>
@@ -1406,7 +1414,7 @@ function FileRow({
           {isVideo ? (
             <FileVideo className="w-4 h-4 text-purple-400 flex-shrink-0" />
           ) : (
-            <FileAudio className="w-4 h-4 text-blue-400 flex-shrink-0" />
+            <FileAudio className="w-4 h-4 text-teal-300 flex-shrink-0" />
           )}
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate" data-testid={`text-file-name-${file.id}`}>{file.originalFileName}</p>
@@ -1421,12 +1429,12 @@ function FileRow({
 
         {(file.status === "processing" || file.status === "pending") && (
           <div className="flex items-center gap-2">
-            <Loader2 className="w-3 h-3 text-blue-400 animate-spin flex-shrink-0" />
+            <Loader2 className="w-3 h-3 text-teal-300 animate-spin flex-shrink-0" />
             <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
               {file.status === "pending" ? (
                 <div className="h-full bg-yellow-500/50 rounded-full animate-pulse" style={{ width: "100%" }} />
               ) : (
-                <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${Math.max(file.processingProgress || 0, 2)}%` }} />
+                <div className="h-full bg-teal-400 rounded-full transition-all duration-500" style={{ width: `${Math.max(file.processingProgress || 0, 2)}%` }} />
               )}
             </div>
             <span className="text-[10px] text-muted-foreground tabular-nums min-w-[60px] text-right">
@@ -1530,7 +1538,7 @@ function StatusBadge({ status }: { status: string }) {
     case "completed":
       return <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">Done</Badge>;
     case "processing":
-      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px]">Processing</Badge>;
+      return <Badge className="bg-teal-400/20 text-teal-300 border-teal-400/30 text-[10px]">Processing</Badge>;
     case "failed":
       return <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px]">Failed</Badge>;
     default:

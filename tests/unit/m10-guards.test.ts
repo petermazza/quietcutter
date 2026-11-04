@@ -144,6 +144,11 @@ describe("m10 guards: upgrade pricing copy", () => {
     expect(prodBranch![0]).not.toContain("unsafe-eval");
   });
 
+  it("Content-Security-Policy lets the waveform and audio preview load blob media", () => {
+    const src = fs.readFileSync(path.join(ROOT, "server/index.ts"), "utf8");
+    expect(src).toContain(`"media-src 'self' blob:"`);
+  });
+
   it("package.json keeps @types/* out of production dependencies and defines check:audit", () => {
     const pkg = JSON.parse(
       fs.readFileSync(path.join(ROOT, "package.json"), "utf8")

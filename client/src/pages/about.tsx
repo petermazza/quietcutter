@@ -138,8 +138,8 @@ export default function About() {
 
           <Card className="bg-card/50 border-border/50">
             <CardContent className="pt-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
-                <Wand2 className="w-6 h-6 text-blue-400" />
+              <div className="w-12 h-12 rounded-full bg-teal-400/20 flex items-center justify-center mx-auto mb-4">
+                <Wand2 className="w-6 h-6 text-teal-300" />
               </div>
               <h3 className="font-semibold mb-2">Smart Presets</h3>
               <p className="text-sm text-muted-foreground">
