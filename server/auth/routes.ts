@@ -34,6 +34,7 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   // Passwordless sign-in, step 1: email a one-time code.
+  // public because: this IS the sign-in — emails a one-time code (rate-limited)
   app.post("/api/auth/otp/send", otpSendLimiter, async (req: any, res: any) => {
     try {
       if (typeof req.body?.email !== "string") {
@@ -284,6 +285,7 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   // Login redirect (GET for compatibility)
+  // public because: legacy login redirect stub — sends browsers to the app shell
   app.get("/api/login", (_req: any, res: any) => {
     res.redirect("/");
   });

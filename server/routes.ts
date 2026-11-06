@@ -676,6 +676,7 @@ export async function registerRoutes(
     }
   });
 
+  // public because: public contact form — rate-limited, validated, emails the team
   app.post("/api/contact", contactLimiter, async (req, res) => {
     try {
       const { name, email, subject, message } = req.body;
@@ -956,6 +957,7 @@ export async function registerRoutes(
     }
   });
 
+  // public because: Stripe publishable key is designed to be public — it can only create checkouts, not charges
   app.get("/api/stripe/publishable-key", async (req, res) => {
     try {
       const publishableKey = await getStripePublishableKey();
@@ -966,6 +968,7 @@ export async function registerRoutes(
     }
   });
 
+  // public because: public pricing display — needed before sign-in to show plans
   app.get("/api/stripe/products", async (req, res) => {
     try {
       const products = await stripeService.listProductsWithPrices();
