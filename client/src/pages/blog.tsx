@@ -173,7 +173,7 @@ export default function Blog() {
             <Link href="/about" className="text-xs text-muted-foreground" data-testid="link-about-footer">About</Link>
             <Link href="/blog" className="text-xs text-muted-foreground" data-testid="link-blog-footer">Blog</Link>
             <Link href="/contact" className="text-xs text-muted-foreground" data-testid="link-contact-footer">Contact</Link>
-            <a href="https://instagram.com/quietcutterdotcom" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground inline-flex items-center gap-1" data-testid="link-instagram-footer"><SiInstagram className="w-3 h-3" /></a>
+            <a href="https://instagram.com/quietcutterdotcom" target="_blank" rel="noopener noreferrer" aria-label="QuietCutter on Instagram" className="text-xs text-muted-foreground inline-flex items-center gap-1" data-testid="link-instagram-footer"><SiInstagram className="w-3 h-3" aria-hidden="true" /></a>
           </nav>
         </div>
       </footer>

@@ -526,7 +526,7 @@ export default function Home() {
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
+                      <Button variant="ghost" size="icon" className="rounded-full" aria-label={user?.firstName ? `${user.firstName}'s account menu` : "Account menu"} data-testid="button-user-menu">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || "User"} />
                           <AvatarFallback className="text-xs bg-muted">
@@ -660,7 +660,7 @@ export default function Home() {
                     if (found) handlePresetClick(found);
                   }}
                 >
-                  <SelectTrigger className="w-40" data-testid="select-preset-dropdown">
+                  <SelectTrigger className="w-40" aria-label="Silence preset" data-testid="select-preset-dropdown">
                     <SelectValue placeholder="Custom" />
                   </SelectTrigger>
                   <SelectContent>
@@ -696,7 +696,7 @@ export default function Home() {
                   value={selectedProjectId || ""}
                   onValueChange={(val) => setSelectedProjectId(val)}
                 >
-                  <SelectTrigger className="w-48" data-testid="select-upload-project" disabled={!isAuthenticated}>
+                  <SelectTrigger className="w-48" aria-label="Upload destination project" data-testid="select-upload-project" disabled={!isAuthenticated}>
                     <SelectValue placeholder={isAuthenticated && (projectsLoading || !projects?.length) ? "Loading..." : "My Uploads"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -829,7 +829,7 @@ export default function Home() {
                       </div>
                       {isPro ? (
                         <Select value={outputFormat} onValueChange={setOutputFormat}>
-                          <SelectTrigger className="w-28" data-testid="select-output-format">
+                          <SelectTrigger className="w-28" aria-label="Output format" data-testid="select-output-format">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1176,7 +1176,7 @@ export default function Home() {
             <Link href="/about" className="text-xs text-muted-foreground" data-testid="link-about-footer">About</Link>
             <Link href="/blog" className="text-xs text-muted-foreground" data-testid="link-blog-footer">Blog</Link>
             <Link href="/contact" className="text-xs text-muted-foreground" data-testid="link-contact-footer">Contact</Link>
-            <a href="https://instagram.com/quietcutterdotcom" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground inline-flex items-center gap-1" data-testid="link-instagram-footer"><SiInstagram className="w-3 h-3" /></a>
+            <a href="https://instagram.com/quietcutterdotcom" target="_blank" rel="noopener noreferrer" aria-label="QuietCutter on Instagram" className="text-xs text-muted-foreground inline-flex items-center gap-1" data-testid="link-instagram-footer"><SiInstagram className="w-3 h-3" aria-hidden="true" /></a>
           </nav>
         </div>
       </footer>
